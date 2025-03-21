@@ -15,9 +15,9 @@ export default defineNuxtConfig({
   ],
   runtimeConfig: {
     public: {
-      apiBase: "https://1313-102-89-34-174.ngrok-free.app/api",
+      apiBase: "https://techno-communications-wi-char.trycloudflare.com/api",
       reverbAppKey: "fwz3lcuedhtxbptxrbjx",
-      reverbHost: "cabb-102-89-34-174.ngrok-free.app",
+      reverbHost: "watched-once-romantic-mrna.trycloudflare.com",
       reverbPort: 443,
     },
   },

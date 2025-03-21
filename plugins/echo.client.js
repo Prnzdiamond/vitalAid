@@ -16,7 +16,7 @@ export default defineNuxtPlugin(() => {
         authEndpoint: config.public.apiBase + "/broadcasting/auth", // ✅ Fix auth endpoint
         auth: {
             headers: {
-                Authorization: `Bearer ${JSON.parse(localStorage.getItem("token"))}`, // ✅ Ensure the token is passed
+                Authorization: `Bearer ${localStorage.getItem("token")}`, // ✅ Ensure the token is passed
             },
         },
         cluster: ""
