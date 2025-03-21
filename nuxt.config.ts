@@ -15,9 +15,9 @@ export default defineNuxtConfig({
   ],
   runtimeConfig: {
     public: {
-      apiBase: "https://techno-communications-wi-char.trycloudflare.com/api",
+      apiBase: "https://broker-naturally-lynn-due.trycloudflare.com/api",
       reverbAppKey: "fwz3lcuedhtxbptxrbjx",
-      reverbHost: "watched-once-romantic-mrna.trycloudflare.com",
+      reverbHost: "localhost",
       reverbPort: 443,
     },
   },
