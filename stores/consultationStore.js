@@ -74,10 +74,13 @@ export const useConsultationStore = defineStore('consultation', {
             window.Echo.leave(`consultations.${this.activeConsultation.id}`);
 
             console.log(`Listening to consultations.${this.activeConsultation.id}`);
-            window.Echo.channel(`consultations.${this.activeConsultation.id}`)
+            window.Echo.private(`consultations.${this.activeConsultation.id}`)
                 .listen('.message.sent', (event) => {
                     console.log("A new message was received:", event.message);
-                    this.messages.push(event.message);
+                    if (!this.messages.some(m => m.id === event.message.id)) {
+                        this.messages.push(event.message);
+                    }
+
                 });
         },
         listenForNewConsultations() {
