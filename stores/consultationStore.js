@@ -77,9 +77,15 @@ export const useConsultationStore = defineStore('consultation', {
             window.Echo.private(`consultations.${this.activeConsultation.id}`)
                 .listen('.message.sent', (event) => {
                     console.log("A new message was received:", event.message);
-                    if (!this.messages.some(m => m.id === event.message.id)) {
+                    if (!this.messages.some((m, index) =>
+                        m.sender === event.message.sender &&
+                        m.message === event.message.message &&
+                        Math.abs(new Date(m.timestamp) - new Date(event.message.timestamp)) < 1000 && // Allow 1 sec difference
+                        index !== this.messages.length - 1 // Ensures it's not blocking sequential messages
+                    )) {
                         this.messages.push(event.message);
                     }
+
 
                 });
         },
