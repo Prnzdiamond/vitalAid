@@ -2,7 +2,7 @@ export const useToken = () => {
     return {
         get: () => {
             if (process.client) {
-                return JSON.parse(localStorage.getItem("token") || '""').replace(/^"|"$/g, "") || null;
+                return localStorage.getItem("token") || '""'.replace(/^"|"$/g, "") || null;
             }
             return null;
         },
