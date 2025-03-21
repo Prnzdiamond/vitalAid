@@ -92,7 +92,7 @@ export const useConsultationStore = defineStore('consultation', {
         listenForNewConsultations() {
             window.Echo.private('consultations')
                 .listen('.consultation.requested', (event) => {
-                    this.unreadConsultations.push(event.consultation); // ✅ Store unread consultations
+                    this.unreadConsultations.push(event.consultation); // ✅ Store unread consultation
                     this.notifyDoctor(event.consultation);
                 });
         },
