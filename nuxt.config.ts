@@ -17,8 +17,8 @@ export default defineNuxtConfig({
     public: {
       apiBase: "https://broker-naturally-lynn-due.trycloudflare.com/api",
       reverbAppKey: "fwz3lcuedhtxbptxrbjx",
-      reverbHost: "localhost",
-      reverbPort: 443,
+      reverbHost: "jar-bay-resource-gnome.trycloudflare.com",
+      reverbPort: 8080,
     },
   },
 });
