@@ -52,31 +52,18 @@ export const useConsultationStore = defineStore('consultation', {
         async sendMessage(message) {
             if (!message.trim()) return;
 
-            const tempMessage = {
-                sender: useAuthStore().user.name, // ✅ Show sender name
-                message: message,
-                timestamp: new Date().toISOString(), // ✅ Temporary timestamp
-                temp: true // ✅ Mark as temporary
-            };
-
-            this.messages.push(tempMessage); // ✅ Show message instantly
-
             const config = useRuntimeConfig();
             try {
-                const data = await $fetch(`/consultations/${this.activeConsultation.id}/message`, {
+                await $fetch(`/consultations/${this.activeConsultation.id}/message`, {
                     method: 'POST',
                     headers: { 'Authorization': `Bearer ${useToken().get()}` },
                     baseURL: config.public.apiBase,
                     body: { message },
                 });
 
-                // ✅ Replace temp message with actual message from backend
-                const index = this.messages.findIndex(m => m.temp && m.message === tempMessage.message);
-                if (index !== -1) {
-                    this.messages[index] = data.data;
-                }
+                // ✅ Do NOT push message manually; Laravel Echo will handle it
             } catch (error) {
-                console.error('Error sending message:', error);
+                console.error("Error sending message:", error);
             }
         },
 
