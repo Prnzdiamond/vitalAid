@@ -41,7 +41,7 @@ export const useConsultationStore = defineStore('consultation', {
                 });
 
                 this.activeConsultation = data.consultation;
-                this.messages = data.consultation.messages // ✅ Load previous messages
+                this.messages = data.consultation.messages || []; // ✅ Load previous messages
                 console.log(this.activeConsultation, this.messages);
                 this.listenForMessages();
             } catch (error) {
@@ -82,14 +82,19 @@ export const useConsultationStore = defineStore('consultation', {
 
         listenForMessages() {
             if (!this.activeConsultation) return;
+
+            // Unbind previous listener to avoid duplication
+            window.Echo.leave(`consultations.${this.activeConsultation.id}`);
+
             console.log(`Listening to consultations.${this.activeConsultation.id}`);
             window.Echo.channel(`consultations.${this.activeConsultation.id}`)
                 .listen('.message.sent', (event) => {
-                    console.log("a new message was sent");
+                    console.log("A new message was received:", event.message);
                     this.messages.push(event.message);
                 });
         },
         listenForNewConsultations() {
+            console.log("listening for new consultations")
             window.Echo.private('consultations')
                 .listen('.consultation.requested', (event) => {
                     this.unreadConsultations.push(event.consultation); // ✅ Store unread consultation
@@ -98,13 +103,23 @@ export const useConsultationStore = defineStore('consultation', {
         },
 
         notifyDoctor(consultation) {
-            // ✅ Trigger a browser notification
-            if (Notification.permission === "granted") {
-                new Notification("New Consultation Request", {
-                    body: `Patient: ${consultation.user_id}`,
-                    icon: "/icons/notification-icon.png"
+            if (Notification.permission === "default") {
+                Notification.requestPermission().then((permission) => {
+                    if (permission === "granted") {
+                        this.showNotification(consultation);
+                    }
                 });
+            } else if (Notification.permission === "granted") {
+                this.showNotification(consultation);
             }
+        },
+
+        showNotification(consultation) {
+            new Notification("New Consultation Request", {
+                body: `Patient: ${consultation.user_id}`,
+                icon: "/icons/notification-icon.png"
+            });
         }
+
     }
 });
