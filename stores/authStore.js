@@ -5,8 +5,8 @@ import { useRuntimeConfig } from "#app";
 
 export const useAuthStore = defineStore("auth", {
     state: () => ({
-        user: process.client ? localStorage.getItem("user") || null : null,
-        token: process.client ? localStorage.getItem("token" || '""').replace(/^"|"$/g, "") : "",
+        user: process.client ? JSON.parse(localStorage.getItem("user")) || null : null,
+        token: process.client ? JSON.parse(localStorage.getItem("token") || '""').replace(/^"|"$/g, "") : "",
     }),
 
     getters: {
@@ -45,9 +45,9 @@ export const useAuthStore = defineStore("auth", {
                     this.token = response.token;
                     this.user = response.user;
 
-                    localStorage.setItem("loginState", true);
-                    localStorage.setItem("token", response.token);
-                    localStorage.setItem("user", response.user);
+                    localStorage.setItem("loginState", JSON.stringify(true));
+                    localStorage.setItem("token", JSON.stringify(response.token));
+                    localStorage.setItem("user", JSON.stringify(response.user));
                 }
 
                 return {
@@ -70,7 +70,6 @@ export const useAuthStore = defineStore("auth", {
             }
 
             const url_token = this.token
-            console.log(url_token)
 
             try {
                 const config = useRuntimeConfig();
@@ -79,10 +78,9 @@ export const useAuthStore = defineStore("auth", {
                     baseURL: config.public.apiBase,
                 });
 
-                console.log(response);
                 if (response) {
                     this.user = response.user;
-                    localStorage.setItem("user", response.user);
+                    localStorage.setItem("user", JSON.stringify(response.user));
                 }
             } catch (error) {
                 console.error("Error fetching user:", error);
@@ -118,7 +116,7 @@ export const useAuthStore = defineStore("auth", {
         restoreSession() {
             if (process.client) {
                 this.token = localStorage.getItem("token") || "";
-                this.user = localStorage.getItem("user") || null;
+                this.user = JSON.parse(localStorage.getItem("user")) || null;
             }
         },
     },
