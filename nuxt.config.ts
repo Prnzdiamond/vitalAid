@@ -15,9 +15,9 @@ export default defineNuxtConfig({
   ],
   runtimeConfig: {
     public: {
-      apiBase: "https://broker-naturally-lynn-due.trycloudflare.com/api",
+      apiBase: "https://relation-leu-personalized-polish.trycloudflare.com/api",
       reverbAppKey: "fwz3lcuedhtxbptxrbjx",
-      reverbHost: "jar-bay-resource-gnome.trycloudflare.com",
+      reverbHost: "tions-rates-lonely-organizations.trycloudflare.com",
       reverbPort: 8080,
     },
   },
