@@ -15,10 +15,10 @@ export default defineNuxtConfig({
   ],
   runtimeConfig: {
     public: {
-      apiBase: "http://localhost:8000/api",
+      apiBase: "https://1313-102-89-34-174.ngrok-free.app/api",
       reverbAppKey: "fwz3lcuedhtxbptxrbjx",
-      reverbHost: "localhost",
-      reverbPort: 8080,
+      reverbHost: "cabb-102-89-34-174.ngrok-free.app",
+      reverbPort: 443,
     },
   },
 });
