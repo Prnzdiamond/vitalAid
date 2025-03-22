@@ -15,9 +15,9 @@ export default defineNuxtConfig({
   ],
   runtimeConfig: {
     public: {
-      apiBase: "https://relation-leu-personalized-polish.trycloudflare.com/api",
+      apiBase: "https://balanced-village-governance-henderson.trycloudflare.com/api",
       reverbAppKey: "fwz3lcuedhtxbptxrbjx",
-      reverbHost: "tions-rates-lonely-organizations.trycloudflare.com",
+      reverbHost: "pay-detect-accounting-wallpapers.trycloudflare.com",
       reverbPort: 8080,
     },
   },

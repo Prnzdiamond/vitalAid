@@ -9,7 +9,7 @@
       <!-- ✅ Messages -->
       <div class="h-60 overflow-y-auto p-3 bg-gray-50">
        <div v-for="msg in store.messages" :key="msg.timestamp"
-     :class="{'text-right': msg.sender === user.name, 'text-left': msg.sender !== user.name}">
+     :class="{'text-right': msg.sender === user._tag, 'text-left': msg.sender !== user._tag}">
   
   <!-- Sender Name -->
   <span class="block text-sm font-semibold">{{ msg.sender }}</span>
@@ -17,8 +17,8 @@
   <!-- Message Bubble -->
   <p class="inline-block px-3 py-2 rounded-lg text-sm my-1"
      :class="{
-       'bg-gray-300 text-black': msg.sender !== user.name && !msg.temp,
-       'bg-blue-500 text-white': msg.sender === user.name && !msg.temp,
+       'bg-gray-300 text-black': msg.sender !== user._tag && !msg.temp,
+       'bg-blue-500 text-white': msg.sender === user._tag && !msg.temp,
        'bg-white text-gray-500 opacity-50 italic text-left': msg.temp // ✅ Pending message style
      }">
     {{ msg.message }}
@@ -79,7 +79,10 @@ const formatTimestamp = (timestamp) => {
 };
 
 onMounted(() => {
-   store.listenForMessages();
     authStore.fetchUser();
+    if (!store.activeConsultation) {
+        store.listenForMessages(); // ✅ Only attach if there's an active consultation
+    }
 });
+
 </script>
