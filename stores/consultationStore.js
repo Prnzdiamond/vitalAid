@@ -6,7 +6,8 @@ export const useConsultationStore = defineStore('consultation', {
         consultations: [],
         activeConsultation: null,
         messages: [],
-        unreadConsultations: []
+        unreadConsultations: [],
+        showChat: false
     }),
 
     actions: {
@@ -44,6 +45,7 @@ export const useConsultationStore = defineStore('consultation', {
                 this.messages = data.consultation.messages || []; // ✅ Load previous messages
                 console.log(this.activeConsultation, this.messages);
                 this.listenForMessages();
+                this.showChat = true;
             } catch (error) {
                 console.error('Error accepting consultation:', error);
             }

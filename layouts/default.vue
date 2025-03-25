@@ -25,7 +25,7 @@
 
     <!-- ✅ Chat Popup (Uses Chatbox.vue) -->
     <Teleport to="body">
-      <div v-if="showChat" class="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50">
+      <div v-if="store.showChat" class="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50">
         <div class="bg-white w-full max-w-lg rounded-lg shadow-lg p-4 relative">
           <!-- Close Button -->
           <button
@@ -68,9 +68,8 @@ import Chatbox from '~/components/Chatbox.vue';
 import { onMounted } from 'vue';
 
 const store = useConsultationStore();
-const showChat = ref(false);
 const toggleChat = () => {
-  showChat.value = !showChat.value;
+  store.showChat= !store.showChat;
 };
 
 // ✅ Hide sidebar on login and other auth pages

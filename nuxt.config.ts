@@ -15,9 +15,9 @@ export default defineNuxtConfig({
   ],
   runtimeConfig: {
     public: {
-      apiBase: "https://balanced-village-governance-henderson.trycloudflare.com/api",
+      apiBase: "https://arrow-jones-cartridges-vi.trycloudflare.com/api",
       reverbAppKey: "fwz3lcuedhtxbptxrbjx",
-      reverbHost: "pay-detect-accounting-wallpapers.trycloudflare.com",
+      reverbHost: "allowed-elder-moscow-accessibility.trycloudflare.com",
       reverbPort: 8080,
     },
   },
