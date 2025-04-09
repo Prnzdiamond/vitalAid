@@ -5,10 +5,6 @@
 <script setup>
 import { useRouter, useRuntimeConfig, onMounted } from "#imports";
 
-definePageMeta({
-  middleware: "auth",
-});
-
 const router = useRouter();
 const store = useAuthStore();
 

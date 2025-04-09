@@ -7,6 +7,7 @@ export const useAuthStore = defineStore("auth", {
     state: () => ({
         user: process.client ? JSON.parse(localStorage.getItem("user")) || null : null,
         token: process.client ? localStorage.getItem("token") || '""'.replace(/^"|"$/g, "") : "",
+        loggedIn: process.client ? !!JSON.parse(localStorage.getItem("loginState")) : false
     }),
 
     getters: {
@@ -45,6 +46,8 @@ export const useAuthStore = defineStore("auth", {
                     this.token = response.token;
                     this.user = response.user;
 
+
+                    this.loggedIn = true;
                     localStorage.setItem("loginState", true);
                     localStorage.setItem("token", response.token);
                     localStorage.setItem("user", JSON.stringify(response.user));
@@ -106,6 +109,7 @@ export const useAuthStore = defineStore("auth", {
                     localStorage.removeItem("token");
                     localStorage.removeItem("user");
                 }
+                this.loggedIn = false;
 
                 const router = useRouter();
                 router.push("/login");

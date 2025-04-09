@@ -15,9 +15,9 @@ export default defineNuxtConfig({
   ],
   runtimeConfig: {
     public: {
-      apiBase: "https://arrow-jones-cartridges-vi.trycloudflare.com/api",
+      apiBase: "http://localhost:8000/api",
       reverbAppKey: "fwz3lcuedhtxbptxrbjx",
-      reverbHost: "allowed-elder-moscow-accessibility.trycloudflare.com",
+      reverbHost: "localhost",
       reverbPort: 8080,
     },
   },

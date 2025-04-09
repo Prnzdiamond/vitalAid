@@ -41,6 +41,11 @@
 </template>
 
 <script setup>
+
+definePageMeta({
+  layout: "blank"
+})
+
 import { ref } from "vue";
 import { useRouter } from "vue-router";
 // Import useAuthStore
