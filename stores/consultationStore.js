@@ -172,7 +172,7 @@ export const useConsultationStore = defineStore('consultation', {
         }
     },
 
-    persist: true
+    // persist: true
 });
 
 
