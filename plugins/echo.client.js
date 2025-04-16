@@ -10,7 +10,7 @@ export default defineNuxtPlugin(() => {
         key: config.public.reverbAppKey,
         wsHost: config.public.reverbHost,
         wsPort: config.public.reverbPort,
-        forceTLS: true,
+        forceTLS: false,
         disableStats: true,
         enabledTransports: ["ws", "wss"],
         authEndpoint: config.public.apiBase + "/broadcasting/auth", // ✅ Fix auth endpoint

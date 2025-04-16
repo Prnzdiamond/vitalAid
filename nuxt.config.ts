@@ -15,9 +15,9 @@ export default defineNuxtConfig({
   ],
   runtimeConfig: {
     public: {
-      apiBase: "https://fell-says-consent-attendance.trycloudflare.com/api",
+      apiBase: "http://ec2-3-87-112-153.compute-1.amazonaws.com/api",
       reverbAppKey: "fwz3lcuedhtxbptxrbjx",
-      reverbHost: "scientific-repository-wage-feel.trycloudflare.com",
+      reverbHost: "3.87.112.153",
       reverbPort: 8080,
     },
   },
