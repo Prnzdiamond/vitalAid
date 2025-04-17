@@ -59,7 +59,7 @@
         <!-- Login Redirect -->
         <p class="text-center mt-4 text-gray-600">
           Already have an account? 
-          <a href="/login" class="text-blue-600 hover:underline">Login</a>
+          <NuxtLink to="/login" class="text-blue-600 hover:underline">Login</NuxtLink>
         </p>
       </form>
     </div>

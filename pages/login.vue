@@ -33,7 +33,7 @@
         </div>
         <p class="text-center mt-2 text-gray-600">
           New user? 
-          <a href="/register" class="text-blue-600 hover:underline">Register</a>
+          <NuxtLink to="/register" class="text-blue-600 hover:underline">Register</NuxtLink>
         </p>
       </form>
     </div>
@@ -46,6 +46,7 @@ definePageMeta({
   layout: "blank"
 })
 
+import { NuxtLink } from "#components";
 import { ref } from "vue";
 import { useRouter } from "vue-router";
 // Import useAuthStore

@@ -1,7 +1,9 @@
+// ~/plugins/echo.client.js
 import Echo from "laravel-echo";
 import Pusher from "pusher-js";
 
-export default defineNuxtPlugin(() => {
+// Initialize Echo with the provided token
+const initEcho = (token) => {
     const config = useRuntimeConfig();
 
     window.Pusher = Pusher;
@@ -13,12 +15,16 @@ export default defineNuxtPlugin(() => {
         forceTLS: false,
         disableStats: true,
         enabledTransports: ["ws", "wss"],
-        authEndpoint: config.public.apiBase + "/broadcasting/auth", // ✅ Fix auth endpoint
+        cluster: "",
+
+        authEndpoint: config.public.apiBase + "/broadcasting/auth",
         auth: {
             headers: {
-                Authorization: `Bearer ${localStorage.getItem("token")}`, // ✅ Ensure the token is passed
+                Authorization: `Bearer ${token}`,
             },
         },
-        cluster: ""
     });
-});
+};
+
+// Exporting the initEcho function as default export
+export default initEcho;
