@@ -15,9 +15,9 @@ export default defineNuxtConfig({
   ],
   runtimeConfig: {
     public: {
-      apiBase: "http://ec2-3-87-112-153.compute-1.amazonaws.com/api",
+      apiBase: "https://vitalaid.duckdns.org//api",
       reverbAppKey: "fwz3lcuedhtxbptxrbjx",
-      reverbHost: "3.87.112.153",
+      reverbHost: "vitalaid.duckdns.org",
       reverbPort: 8080,
     },
   },
