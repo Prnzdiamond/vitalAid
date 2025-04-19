@@ -6,6 +6,9 @@ import Pusher from "pusher-js";
 const initEcho = (token) => {
     const config = useRuntimeConfig();
 
+    console.log("🧪 initEcho CALLED WITH:", token, typeof token);
+
+
     window.Pusher = Pusher;
     window.Echo = new Echo({
         broadcaster: "pusher",

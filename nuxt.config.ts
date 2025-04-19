@@ -12,8 +12,7 @@ export default defineNuxtConfig({
   },
 
   plugins: [
-    "~/plugins/init-echo.client.js",
-    '~/plugins/echo.client'
+    "~/plugins/init-echo.client.js"
   ],
 
   runtimeConfig: {
