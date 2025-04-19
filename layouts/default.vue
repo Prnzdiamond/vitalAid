@@ -23,11 +23,13 @@
     <span class="text-xs bg-green-100 text-green-700 px-2 py-1 rounded ml-1">{{ user.role }}</span>
   </h2>
   <ul class="space-y-4">
-    <li><NuxtLink to="/event" class="dashboard-link">📅 Events</NuxtLink></li>
-    <li><NuxtLink to="/donate" class="dashboard-link">💰 Donate</NuxtLink></li>
-    <li v-if="user.role === 'health_expert'"><NuxtLink to="/consultations" class="dashboard-link">📋 Consultations</NuxtLink></li>
-    <li><NuxtLink to="/profile" class="dashboard-link">👤 Profile</NuxtLink></li>
-  </ul>
+          <li><NuxtLink to="/event" class="dashboard-link">📅 Events</NuxtLink></li>
+          <li><NuxtLink to="/my-events/joined" class="dashboard-link">📌 Joined Events</NuxtLink></li>
+          <li><NuxtLink to="/my-events/created" class="dashboard-link">🛠️ Created Events</NuxtLink></li>
+          <li><NuxtLink to="/donate" class="dashboard-link">💰 Donate</NuxtLink></li>
+          <li v-if="user.role === 'health_expert'"><NuxtLink to="/consultations" class="dashboard-link">📋 Consultations</NuxtLink></li>
+          <li><NuxtLink to="/profile" class="dashboard-link">👤 Profile</NuxtLink></li>
+        </ul>
 </aside>
 
 

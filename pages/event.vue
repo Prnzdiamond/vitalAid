@@ -55,7 +55,7 @@ const joinVolunteer = (id) => {
     <div class="flex justify-between items-center mb-6">
       <h1 class="text-3xl font-bold text-green-800">Volunteer Events</h1>
 
-      <NuxtLink 
+      <NuxtLink
         to="/events/create"
         class="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700"
         v-if="token.get()"
@@ -68,26 +68,32 @@ const joinVolunteer = (id) => {
       No events available.
     </div>
 
-    <div 
-      v-for="event in eventStore.events" 
-      :key="event.id" 
+    <div
+      v-for="event in eventStore.events"
+      :key="event.id"
       class="bg-white border border-green-200 p-4 rounded-lg shadow hover:shadow-md transition mb-4"
     >
-      <h2 class="text-xl font-semibold text-green-800">{{ event.title }}</h2>
-      <p class="text-gray-700">{{ event.description }}</p>
-      <p class="text-gray-600 text-sm italic">{{ event.location }}</p>
+      <NuxtLink :to="`/events/${event._id}`" class="block hover:bg-green-50 p-2 rounded-md">
+        <h2 class="text-xl font-semibold text-green-800">{{ event.title }}</h2>
+        <p class="text-gray-700">{{ event.description.substring(0, 100) }}...</p>
+        <p class="text-gray-600 text-sm italic">{{ event.location }} | {{ new Date(event.start_time).toLocaleDateString() }}</p>
+      </NuxtLink>
 
-      <button
-        v-if="!eventStore.userEvents.includes(event.id)"
-        class="mt-3 px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700"
-        @click="joinEvent(event.id)"
-      >
-        Join Event
-      </button>
-
-      <span v-else class="mt-3 inline-block px-4 py-2 bg-gray-400 text-white rounded">
-        Joined
-      </span>
+      <div class="mt-3 flex justify-end">
+        <button
+          v-if="token.get() && !eventStore.userEvents.includes(event.id)"
+          class="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 mr-2"
+          @click.stop="joinEvent(event.id)"
+        >
+          Join
+        </button>
+        <span v-else-if="token.get() && eventStore.userEvents.includes(event.id)" class="inline-block px-4 py-2 bg-gray-400 text-white rounded mr-2">
+          Joined
+        </span>
+        <NuxtLink :to="`/events/${event.id}`" class="px-3 py-1 text-green-600 hover:underline text-sm">
+          Details
+        </NuxtLink>
+      </div>
     </div>
   </div>
 </template>
@@ -113,5 +119,6 @@ const joinEvent = async (eventId) => {
     return;
   }
   await eventStore.joinEvent(eventId);
+  await eventStore.fetchUserEvents(); // Update joined events on the list
 };
 </script>

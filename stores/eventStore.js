@@ -6,6 +6,7 @@ export const useEventStore = defineStore("event", {
     state: () => ({
         events: [],
         userEvents: [],
+        createdEvents: []
     }),
 
     actions: {
@@ -31,6 +32,7 @@ export const useEventStore = defineStore("event", {
             try {
                 return await $fetch(`/events/${eventId}`, {
                     method: "GET",
+                    headers: { 'Authorization': `Bearer ${useToken().get()}` },
                     baseURL: config.public.apiBase,
                 });
             } catch (error) {
@@ -71,6 +73,22 @@ export const useEventStore = defineStore("event", {
             }
         },
 
+        // Fetch user's created events (Authenticated users)
+        async fetchUserCreatedEvents() {
+            const config = useRuntimeConfig();
+            try {
+                const response = await $fetch("/user/events/created", {
+                    method: "GET",
+                    headers: { 'Authorization': `Bearer ${useToken().get()}` },
+                    baseURL: config.public.apiBase,
+                });
+
+                this.createdEvents = response.created_events.map(event => event.id); // ✅ Ensure correct key
+            } catch (error) {
+                console.error("Error fetching user created events:", error);
+            }
+        },
+
         async createEvent(eventData) {
             const config = useRuntimeConfig();
             try {
@@ -89,6 +107,54 @@ export const useEventStore = defineStore("event", {
             } catch (error) {
                 console.error("Error creating event:", error);
                 throw error;
+            }
+        },
+        async updateEvent(eventId, eventData) {
+            const config = useRuntimeConfig();
+            try {
+                const response = await $fetch(`/events/${eventId}/update`, {
+                    method: "PUT",
+                    headers: {
+                        Authorization: `Bearer ${useToken().get()}`,
+                        "Content-Type": "application/json"
+                    },
+                    body: eventData,
+                    baseURL: config.public.apiBase,
+                });
+                this.events = this.events.map(event => event.id === eventId ? response.event : event);
+                return response.event;
+            }
+            catch (error) {
+                console.error("Error updating event:", error);
+                throw error;
+            }
+        },
+        async deleteEvent(eventId) {
+            const config = useRuntimeConfig();
+            try {
+                await $fetch(`/events/${eventId}/delete`, {
+                    method: "DELETE",
+                    headers: { 'Authorization': `Bearer ${useToken().get()}` },
+                    baseURL: config.public.apiBase,
+                });
+
+                this.events = this.events.filter(event => event.id !== eventId); // Remove deleted event from state
+            } catch (error) {
+                console.error("Error deleting event:", error);
+            }
+        },
+        async leaveEvent(eventId) {
+            const config = useRuntimeConfig();
+            try {
+                await $fetch(`/events/${eventId}/leave`, {
+                    method: "POST",
+                    headers: { 'Authorization': `Bearer ${useToken().get()}` },
+                    baseURL: config.public.apiBase,
+                });
+
+                this.userEvents = this.userEvents.filter(id => id !== eventId); // Remove event from userEvents
+            } catch (error) {
+                console.error("Error leaving event:", error);
             }
         },
 
