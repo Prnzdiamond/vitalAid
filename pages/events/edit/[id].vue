@@ -18,7 +18,8 @@ import { ref, onMounted } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useEventStore } from '@/stores/eventStore';
 import { useToken } from '@/composables/useToken';
-import EventForm from '@/components/EventForm.vue'; // Assuming you'll reuse or adapt your EventForm
+import { useSwal } from '@/composables/useSwal';
+import EventForm from '@/components/EventForm.vue';
 
 const route = useRoute();
 const router = useRouter();
@@ -26,28 +27,59 @@ const eventStore = useEventStore();
 const token = useToken();
 const eventId = route.params.id;
 const event = ref(null);
+const { swal } = useSwal();
 
 onMounted(async () => {
-  const fetchedEvent = await eventStore.fetchEvent(eventId);
-  if (fetchedEvent) {
-    event.value = fetchedEvent.event;
-  } else {
-    alert('Event not found!');
-    router.push('/my-events/created');
+  if (!token.get()) {
+    swal.fire({
+      icon: 'warning',
+      title: 'Unauthorized',
+      text: 'You must be logged in to edit an event.',
+    }).then(() => {
+      router.push('/login');
+    });
+    return;
+  }
+  
+  try {
+    event.value = await eventStore.fetchEvent(eventId);
+  } catch (error) {
+    swal.fire({
+      icon: 'error',
+      title: 'Error',
+      text: 'An error occurred while fetching event details.',
+    }).then(() => {
+      router.push('/my-events/created');
+    });
+    console.error("Error fetching event:", error);
   }
 });
 
 const updateThisEvent = async (updatedEventData) => {
   if (!token.get()) {
-    alert("You must be logged in to edit an event.");
+    swal.fire({
+      icon: 'warning',
+      title: 'Unauthorized',
+      text: 'You must be logged in to edit an event.',
+    });
     return;
   }
+  
   try {
     await eventStore.updateEvent(eventId, updatedEventData);
-    alert("Event updated successfully!");
-    router.push(`/events/${eventId}`); // Redirect to the event details page
+    swal.fire({
+      icon: 'success',
+      title: 'Event Updated',
+      text: 'Event updated successfully!',
+    }).then(() => {
+      router.push(`/events/${eventId}`);
+    });
   } catch (error) {
-    alert("Failed to update event.");
+    swal.fire({
+      icon: 'error',
+      title: 'Update Failed',
+      text: error.response?.data?.message || 'Failed to update event.',
+    });
     console.error("Error updating event:", error);
   }
 };

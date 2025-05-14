@@ -1,7 +1,4 @@
 <script setup>
-definePageMeta({
-  middleware: 'auth' // optional: only if dashboard requires auth
-});
 
 const router = useRouter();
 

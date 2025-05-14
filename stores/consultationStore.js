@@ -1,372 +1,282 @@
-import { defineStore } from 'pinia';
-import { useRuntimeConfig } from '#app';
-import { useMessageStore } from './messageStore';
-import { useNotificationStore } from './notificationStore';
+import { defineStore } from "pinia";
+import { useRuntimeConfig } from "#app";
+import { useToken } from "~/composables/useToken";
+import { useNotificationStore } from "./notificationStore";
+import { useMessageStore } from "./messageStore";
 
-export const useConsultationStore = defineStore('consultation', {
+export const useConsultationStore = defineStore("consultation", {
     state: () => ({
-        consultations: [],
-        activeConsultation: null,
-        expertConsultations: [],
-        activeExpertConsultation: null
+        activeConsultationId: null,
+        activeConsultationData: null,
+        isLoading: false,
+        error: null,
     }),
 
+    getters: {
+        getConsultationById: (state) => (id) => {
+            if (state.activeConsultationData?.id === id) return state.activeConsultationData;
+            state.fetchConsultation(id);
+            return null;
+        },
+        activeConsultation: (state) => state.activeConsultationData
+    },
+
     actions: {
-        async requestConsultation() {
+        // Core API fetch helper
+        async apiCall(endpoint, method = "GET", body = null) {
             const config = useRuntimeConfig();
             try {
-                const data = await $fetch('/consultations/request', {
-                    method: 'POST',
-                    headers: {
-                        'Authorization': `Bearer ${useToken().get()}`,
-                        'Content-Type': 'application/json',
-                    },
+                return await $fetch(endpoint, {
+                    method,
+                    headers: { Authorization: `Bearer ${useToken().get()}` },
                     baseURL: config.public.apiBase,
+                    ...(body && { body })
                 });
-
-                this.activeConsultation = data.consultation;
-                this.listenForConsultationUpdates();
             } catch (error) {
-                console.error('Error requesting consultation:', error);
+                this.error = error.message || `API call to ${endpoint} failed`;
+                throw error;
             }
         },
-        async acceptConsultation(consultationId) {
-            const config = useRuntimeConfig();
-            try {
-                const data = await $fetch(`/consultations/${consultationId}/accept`, {
-                    method: 'POST',
-                    headers: { 'Authorization': `Bearer ${useToken().get()}` },
-                    baseURL: config.public.apiBase,
-                });
 
+        // Notification helper
+        showNotification(title, message, type = "success") {
+            useNotificationStore().show({ title, message, type });
+        },
+
+        // Request a new consultation
+        async requestConsultation() {
+            this.isLoading = true;
+            try {
+                const { data } = await this.apiCall("/consultations/request", "POST");
+                this.activeConsultationId = data.consultation.id;
+                this.activeConsultationData = data.consultation;
+                return data.consultation;
+            } finally {
+                this.isLoading = false;
+            }
+        },
+
+        // Accept a consultation (for health experts)
+        async acceptConsultation(consultationId) {
+            this.isLoading = true;
+            try {
+                const { data } = await this.apiCall(`/consultations/${consultationId}/accept`, "POST");
                 const consultation = data.consultation;
 
                 if (consultation) {
-                    // Avoid duplicates
-                    const exists = this.expertConsultations.some(c => c.id === consultation.id);
-                    if (!exists) this.expertConsultations.push(consultation);
+                    this.activeConsultationId = consultation.id;
 
-                    // Automatically open it
-                    this.activeExpertConsultation = consultation;
-
-                    // Load messages into expert context
+                    // Load messages and setup listeners
                     const messageStore = useMessageStore();
                     messageStore.setMessagesByConsultation(consultation.id, consultation.messages || []);
                     messageStore.listenForMessages(consultation.id);
-                    this.listenForConsultationUpdates();
-                    navigateTo('/consultations')
+                    this.listenForConsultationUpdates(consultation.id);
+
+                    navigateTo('/consultations');
+                    return consultation;
                 }
-            } catch (error) {
-                console.error('Error accepting consultation:', error);
+            } finally {
+                this.isLoading = false;
             }
         },
-        // async acceptConsultation(consultationId) {
-        //     const config = useRuntimeConfig();
-        //     try {
-        //         const data = await $fetch(`/consultations/${consultationId}/accept`, {
-        //             method: 'POST',
-        //             headers: { 'Authorization': `Bearer ${useToken().get()}` },
-        //             baseURL: config.public.apiBase,
-        //         });
 
-        //         if (data.consultation) {
-        //             if (this.activeConsultation) {
+        // Fetch expert consultations on demand
+        async fetchExpertConsultations() {
+            this.isLoading = true;
+            try {
+                const { data } = await this.apiCall("/consultations/expert");
+                return data.consultation || [];
+            } finally {
+                this.isLoading = false;
+            }
+        },
 
-        //                 this.expertConsultations.push(data.consultation);
-        //             } else {
+        // Fetch a single consultation by ID
+        async fetchConsultation(consultationId) {
+            if (!consultationId) return null;
 
-        //                 this.activeConsultation = data.consultation;
-        //             }
-        //             const messageStore = useMessageStore();
-        //             messageStore.setMessages(data.consultation.messages || []);
-        //             messageStore.listenForMessages(consultationId);
-        //             messageStore.showChat = true;
+            this.isLoading = true;
+            try {
+                const { data } = await this.apiCall(`/consultations/${consultationId}`);
+                const consultation = data.consultation;
 
-        //         }
-        //     } catch (error) {
-        //         console.error('Error accepting consultation:', error);
-        //     }
-        // },
+                // Update active consultation if IDs match
+                if (this.activeConsultationId === consultationId) {
+                    this.activeConsultationData = consultation;
+                }
+
+                return consultation;
+            } finally {
+                this.isLoading = false;
+            }
+        },
+
+        // Set active consultation
+        // Set active consultation
+        async setActiveConsultation(consultationId) {
+            this.activeConsultationId = consultationId;
+
+            if (!consultationId) return;
+
+            // Fetch consultation if needed
+            let consultation = this.activeConsultationData?.id === consultationId
+                ? this.activeConsultationData
+                : await this.fetchConsultation(consultationId);
+
+            this.activeConsultationData = consultation;
+
+            // Setup listeners and message handling
+            this.listenForConsultationUpdates(consultationId);
+            const messageStore = useMessageStore();
+
+            if (consultation?.messages?.length > 0) {
+                messageStore.setMessagesByConsultation(consultationId, consultation.messages);
+            } else {
+                messageStore.fetchMessages(consultationId);
+            }
+
+            messageStore.listenForMessages(consultationId);
+
+            // Dispatch event to notify components of active consultation change
+            document.dispatchEvent(new CustomEvent('consultation:active-changed', {
+                detail: { consultation }
+            }));
+        },
+
+        // End a consultation
+        // End a consultation
         async endConsultation(consultationId) {
-            const config = useRuntimeConfig();
+            this.isLoading = true;
             try {
-                const data = await $fetch(`/consultations/${consultationId}/end`, {
-                    method: 'POST',
-                    headers: {
-                        'Authorization': `Bearer ${useToken().get()}`,
-                        'Content-Type': 'application/json',
-                    },
-                    baseURL: config.public.apiBase,
-                });
+                await this.apiCall(`/consultations/${consultationId}/end`, "POST");
 
-                // If ending as a user
-                if (this.activeConsultation?.id === consultationId) {
-                    this.activeConsultation.status = 'completed';
+                if (this.activeConsultationId === consultationId) {
+                    this.activeConsultationId = null;
+                    this.activeConsultationData = null;
                 }
 
-                // If ending as a doctor
-                const idx = this.expertConsultations.findIndex(c => c.id === consultationId);
-                if (idx !== -1) {
-                    this.expertConsultations[idx].status = 'completed';
-                }
+                // Dispatch an event indicating this consultation has ended
+                document.dispatchEvent(new CustomEvent('consultation:ended', {
+                    detail: { consultationId }
+                }));
 
-                console.log('Consultation ended:', data);
-            } catch (error) {
-                console.error('Error ending consultation:', error);
+                return true;
+            } finally {
+                this.isLoading = false;
             }
         },
+
+        // Expert takes over a consultation
         async takeOverChat(consultationId) {
-            const config = useRuntimeConfig()
+            this.isLoading = true;
             try {
-                const data = await $fetch(`/consultations/${consultationId}/takeover`, {
-                    method: 'POST',
-                    headers: {
-                        'Authorization': `Bearer ${useToken().get()}`,
-                        'Content-Type': 'application/json',
-                    },
-                    baseURL: config.public.apiBase,
-                }
+                const { data } = await this.apiCall(`/consultations/${consultationId}/takeover`, "POST");
+                return data.consultation;
+            } finally {
+                this.isLoading = false;
+            }
+        },
+
+        // Fetch consultation history
+        async fetchConsultationHistory() {
+            this.isLoading = true;
+            try {
+                const { data } = await this.apiCall('/consultations/history');
+                return data.consultations || [];
+            } finally {
+                this.isLoading = false;
+            }
+        },
+
+        // Submit rating for a consultation
+        async rateConsultation(consultationId, rating, comment = '') {
+            this.isLoading = true;
+            try {
+                const { data } = await this.apiCall(
+                    `/consultations/${consultationId}/rate`,
+                    "POST",
+                    { rating, comment }
                 );
 
-                console.log(data)
+                if (this.activeConsultationId === consultationId) {
+                    this.activeConsultationData = data.consultation;
+                }
 
+                this.showNotification('Rating Submitted', 'Thank you for your feedback!');
+                return data.consultation;
             } catch (error) {
-                console.error('Error ending consultation:', error);
+                this.showNotification('Rating Failed', this.error, 'error');
+                throw error;
+            } finally {
+                this.isLoading = false;
             }
         },
-        setActiveConsultationForExpert(consultationId) {
-            const consultation = this.expertConsultations.find(c => c.id === consultationId);
-            if (consultation) {
-                this.activeExpertConsultation = consultation;
-            }
-        },
-        listenForConsultationUpdates() {
-            console.log("listening for updates");
 
-            // Listen for consultation updates on the private channel
-            window.Echo.private('consultations.' + this.activeConsultation.id)
+        // Request follow-up for a consultation
+        async requestFollowUp(consultationId, reason = '') {
+            this.isLoading = true;
+            try {
+                const { data } = await this.apiCall(
+                    `/consultations/${consultationId}/follow-up`,
+                    "POST",
+                    { reason }
+                );
+
+                if (this.activeConsultationId === consultationId) {
+                    this.activeConsultationData = data.consultation;
+                }
+
+                this.showNotification('Follow-up Requested', 'Your follow-up request has been submitted.');
+                return data.consultation;
+            } catch (error) {
+                this.showNotification('Follow-up Request Failed', this.error, 'error');
+                throw error;
+            } finally {
+                this.isLoading = false;
+            }
+        },
+
+        // Accept a follow-up request
+        async acceptFollowUp(consultationId) {
+            this.isLoading = true;
+            try {
+                const { data } = await this.apiCall(`/consultations/${consultationId}/accept-follow-up`, "POST");
+                const consultation = data.consultation;
+
+                if (this.activeConsultationId === consultationId) {
+                    this.activeConsultationData = consultation;
+                }
+
+                this.updateConsultationInLists(consultation);
+                this.showNotification('Follow-up Accepted', 'You have accepted the follow-up request.');
+                return consultation;
+            } catch (error) {
+                this.showNotification('Failed to Accept Follow-up', this.error, 'error');
+                throw error;
+            } finally {
+                this.isLoading = false;
+            }
+        },
+
+        // Update consultation in lists
+        updateConsultationInLists(updatedConsultation) {
+            document.dispatchEvent(new CustomEvent('consultation:updated', {
+                detail: { consultation: updatedConsultation }
+            }));
+        },
+
+        // Listen for real-time consultation updates
+        listenForConsultationUpdates(consultationId) {
+            if (!consultationId || !window.Echo) return;
+
+            console.log(`Listening for updates on consultations.${consultationId}`);
+
+            window.Echo.private(`consultations.${consultationId}`)
                 .listen('.consultation.updated', (event) => {
                     console.log("Consultation updated:", event.consultation);
 
-                    // Check if the consultation is in expertConsultations array and update it
-                    const expertConsultationIndex = this.expertConsultations.findIndex(c => c.id === event.consultation.id);
-                    if (expertConsultationIndex !== -1) {
-                        this.expertConsultations[expertConsultationIndex] = event.consultation;
-                    }
-
-                    // Also check if the consultation is in the general consultations array and update it
-                    const consultationIndex = this.consultations.findIndex(c => c.id === event.consultation.id);
-                    if (consultationIndex !== -1) {
-                        this.consultations[consultationIndex] = event.consultation;
-                    }
-
-                    // Finally, update the active consultation if it's the one being updated
-                    if (this.activeConsultation?.id === event.consultation.id) {
-                        this.activeConsultation = event.consultation;
-                    }
-
-                    if (this.activeExpertConsultation?.id === event.consultation?.id) {
-                        this.activeExpertConsultation = event.consultation
-                    }
+                    this.updateConsultationInLists(event.consultation);
                 });
         }
-    },
-
-    // persist: true
+    }
 });
-
-
-
-// import { defineStore } from 'pinia';
-// import { useRuntimeConfig } from '#app';
-
-// export const useConsultationStore = defineStore('consultation', {
-//     state: () => ({
-//         consultations: [],
-//         activeConsultation: null,
-//         messages: [],
-//         unreadConsultations: [],
-//         popupNotifications: [],
-//         showChat: false
-//     }),
-
-//     actions: {
-//         async requestConsultation() {
-//             const config = useRuntimeConfig();
-//             try {
-//                 console.log(useToken().get());
-//                 const data = await $fetch('/consultations/request', {
-//                     method: 'POST',
-//                     headers: {
-//                         'Authorization': `Bearer ${useToken().get()}`,
-//                         'Content-Type': 'application/json',
-//                         'Accept': 'application/json',
-//                     },
-//                     baseURL: config.public.apiBase,
-//                 });
-//                 this.activeConsultation = data.consultation;
-//             } catch (error) {
-//                 console.error('Error requesting consultation:', error);
-//             }
-//         },
-//         async acceptConsultation(consultationId) {
-//             const config = useRuntimeConfig();
-//             try {
-//                 const data = await $fetch(`/consultations/${consultationId}/accept`, {
-//                     method: 'POST',
-//                     headers: { 'Authorization': `Bearer ${useToken().get()}` },
-//                     baseURL: config.public.apiBase,
-//                 });
-
-//                 this.activeConsultation = data.consultation;
-//                 this.messages = data.consultation.messages || [];
-//                 this.unreadConsultations = this.unreadConsultations.filter(
-//                     c => c.id !== consultationId
-//                 );
-
-//                 this.listenForMessages();
-//                 this.showChat = true;
-//             } catch (error) {
-//                 console.error('Error accepting consultation:', error);
-//             }
-//         },
-//         async sendMessage(message) {
-//             if (!message.trim()) return;
-
-//             const config = useRuntimeConfig();
-//             try {
-//                 await $fetch(`/consultations/${this.activeConsultation.id}/message`, {
-//                     method: 'POST',
-//                     headers: { 'Authorization': `Bearer ${useToken().get()}` },
-//                     baseURL: config.public.apiBase,
-//                     body: { message },
-//                 });
-
-//                 // ✅ Do NOT push message manually; Laravel Echo will handle it
-//             } catch (error) {
-//                 console.error("Error sending message:", error);
-//             }
-//         },
-
-//         listenForMessages() {
-//             if (!this.activeConsultation) return;
-
-//             // Unbind previous listener to avoid duplication
-//             window.Echo.leave(`consultations.${this.activeConsultation.id}`);
-
-//             console.log(`Listening to consultations.${this.activeConsultation.id}`);
-//             window.Echo.private(`consultations.${this.activeConsultation.id}`)
-//                 .listen('.message.sent', (event) => {
-//                     console.log("A new message was received:", event.message);
-//                     if (!this.messages.some((m, index) =>
-//                         m.sender === event.message.sender &&
-//                         m.message === event.message.message &&
-//                         Math.abs(new Date(m.timestamp) - new Date(event.message.timestamp)) < 1000 && // Allow 1 sec difference
-//                         index !== this.messages.length - 1 // Ensures it's not blocking sequential messages
-//                     )) {
-//                         this.messages.push(event.message);
-//                     }
-
-
-//                 });
-//         },
-//         listenForNewConsultations() {
-//             console.log("Listening for new consultations");
-
-//             window.Echo.private('consultations')
-//                 .listen('.consultation.requested', (event) => {
-//                     this.unreadConsultations.push(event.consultation);
-//                     this.showPopupNotification(event.consultation);
-//                 })
-//                 .listen('.consultation.accepted', (event) => {
-//                     this.unreadConsultations = this.unreadConsultations.filter(
-//                         c => c.id !== event.consultation.id
-//                     );
-//                 });
-//         },
-//         async fetchNotifications() {
-//             const config = useRuntimeConfig();
-//             try {
-//                 const response = await $fetch('/user/notifications', {
-//                     method: 'GET',
-//                     headers: { 'Authorization': `Bearer ${useToken().get()}` },
-//                     baseURL: config.public.apiBase,
-//                 });
-
-//                 // 🏷️ Add a flag for dynamic buttons
-//                 this.unreadConsultations = response.unread_notifications.map(n => ({
-//                     id: n.id,
-//                     data: n.data, // ✅ Keep full `data` object
-//                     hasActions: n.data.type === 'consultation' // ✅ Ensure only consultations get buttons
-//                 }));
-
-//             } catch (error) {
-//                 console.error("Error fetching notifications:", error);
-//             }
-//         },
-
-//         showPopupNotification(notification) {
-//             const popup = { ...notification, hasActions: notification.type === 'consultation' };
-//             this.popupNotifications.push(popup);
-
-//             // ⏳ Automatically remove after 5 seconds
-//             setTimeout(() => {
-//                 this.popupNotifications = this.popupNotifications.filter(n => n.id !== notification.id);
-//             }, 5000);
-//         },
-
-//         dismissPopupNotification(notificationId) {
-//             this.popupNotifications = this.popupNotifications.filter(n => n.id !== notificationId);
-//         },
-
-//         async dismissNotification(notificationId) {
-//             const config = useRuntimeConfig();
-//             try {
-//                 await $fetch(`/user/notifications/${notificationId}/mark-as-read`, {
-//                     method: 'POST',
-//                     headers: { 'Authorization': `Bearer ${useToken().get()}` },
-//                     baseURL: config.public.apiBase,
-//                 });
-
-//                 // ✅ Remove the notification from the list after marking it as read
-//                 this.unreadConsultations = this.unreadConsultations.filter(n => n.id !== notificationId);
-//             } catch (error) {
-//                 console.error("Error dismissing notification:", error);
-//             }
-//         },
-
-
-
-//         notifyDoctor(consultation) {
-//             if (Notification.permission === "default") {
-//                 Notification.requestPermission().then((permission) => {
-//                     if (permission === "granted") {
-//                         this.showNotification(consultation);
-//                     }
-//                 });
-//             } else if (Notification.permission === "granted") {
-//                 this.showNotification(consultation);
-//             }
-//         },
-//         showNotification(consultation) {
-//             new Notification("New Consultation Request", {
-//                 body: `Patient: ${consultation.user_id}`,
-//                 icon: "/icons/notification-icon.png"
-//             });
-//         },
-//         showPopupNotification(consultation) {
-//             const notification = {
-//                 id: consultation.id,
-//                 type: 'consultation',
-//                 message: `New consultation request from Patient ${consultation.user_id}`,
-//                 timestamp: new Date(),
-//             };
-
-//             this.popupNotifications.push(notification);
-
-//             setTimeout(() => {
-//                 this.popupNotifications = this.popupNotifications.filter(n => n.id !== consultation.id);
-//             }, 10000); // ⏳ Automatically remove after 10 seconds
-//         },
-//     }
-// });

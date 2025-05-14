@@ -3,6 +3,7 @@ import { defineStore } from "pinia";
 import { useRouter } from "vue-router";
 import { useRuntimeConfig } from "#app";
 import initEcho from "~/plugins/echo.client"; // Import Echo reinitialization
+import { useNuxtApp } from '#app';
 
 export const useAuthStore = defineStore("auth", {
     state: () => ({
@@ -46,35 +47,38 @@ export const useAuthStore = defineStore("auth", {
                 });
 
                 if (response.success) {
-                    this.token = response.token;
-                    this.user = response.user;
+                    this.token = response.data.token;
+                    this.user = response.data.user;
                     this.loggedIn = true;
 
                     // Save to localStorage
                     localStorage.setItem("loginState", "true");
-                    localStorage.setItem("token", response.token);
-                    localStorage.setItem("user", JSON.stringify(response.user));
+                    localStorage.setItem("token", response.data.token);
+                    localStorage.setItem("user", JSON.stringify(response.data.user));
 
                     // Reinitialize Echo with the new token
-                    initEcho(response.token);
+                    initEcho(response.data.token);
 
                     return {
-                        message: "Login successful",
+                        message: response.message,
                         success: true,
                     };
+                } else {
+                    return {
+                        message: response.message || "Login failed",
+                        success: false,
+                        errors: response.errors, // Capture backend validation errors
+                    };
                 }
-
-                return {
-                    message: "Login failed",
-                    success: false,
-                };
             } catch (e) {
                 console.error("Login failed:", e);
                 return {
-                    message: `Login failed: ${e.data?.message || e.message}`,
+                    message: e.data?.message || e.message || "Login failed",
                     success: false,
+                    errors: e.data?.errors || {}, // Capture validation errors if they exist
                 };
             }
+
         },
 
         async fetchUser() {
@@ -90,9 +94,9 @@ export const useAuthStore = defineStore("auth", {
                     baseURL: config.public.apiBase,
                 });
 
-                if (response) {
-                    this.user = response.user;
-                    localStorage.setItem("user", JSON.stringify(response.user));
+                if (response.success) {
+                    this.user = response.data.user;
+                    localStorage.setItem("user", JSON.stringify(response.data.user));
                 }
             } catch (error) {
                 console.error("Error fetching user:", error);
@@ -102,6 +106,7 @@ export const useAuthStore = defineStore("auth", {
         async logout() {
             try {
                 const config = useRuntimeConfig();
+                const { $toast } = useNuxtApp();
                 await $fetch("/logout", {
                     method: "POST",
                     headers: { Authorization: `Bearer ${this.token}` },
@@ -122,20 +127,29 @@ export const useAuthStore = defineStore("auth", {
 
                 // Reinitialize Echo with an empty token (or nullify it)
                 initEcho(""); // Reinitialize Echo without a token to disconnect
-
-                // Redirect to login
-                const router = useRouter();
-                router.push("/login");
             } catch (error) {
                 console.error("Logout failed:", error);
+                const { $toast } = useNuxtApp();
+                $toast.error(error.data?.message || "Logout failed");
             }
         },
 
         restoreSession() {
             if (process.client) {
                 const token = localStorage.getItem("token") || "";
-                const user = JSON.parse(localStorage.getItem("user")) || null;
-                const loginState = JSON.parse(localStorage.getItem("loginState"));
+                const userString = localStorage.getItem("user");
+                let user = null;
+                if (userString) {
+                    try {
+                        user = JSON.parse(userString);
+                    } catch (e) {
+                        console.error("Error parsing user from localStorage:", e);
+                        // Optionally, you could clear the invalid data from localStorage here
+                        localStorage.removeItem("user");
+                    }
+                }
+                const loginStateString = localStorage.getItem("loginState");
+                const loginState = loginStateString ? JSON.parse(loginStateString) : false;
 
                 this.token = token;
                 this.user = user;

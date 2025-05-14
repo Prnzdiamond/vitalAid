@@ -4,16 +4,25 @@ import tailwindcss from "@tailwindcss/vite";
 export default defineNuxtConfig({
   compatibilityDate: "2024-11-01",
   devtools: { enabled: true },
-  css: ['~/assets/css/main.css'],
-  modules: ['@pinia/nuxt','pinia-plugin-persistedstate/nuxt'],
+  css: ['~/assets/css/main.css', '~/assets/css/sweetalert.css'],
+   build: {
+    transpile: ['sweetalert2']
+  },
+  modules: [
+    '@pinia/nuxt',
+    'pinia-plugin-persistedstate/nuxt',
+  ],
 
-  vite: {
+ vite: {
     plugins: [tailwindcss()],
   },
 
   plugins: [
-    "~/plugins/init-echo.client.js"
+    "~/plugins/init-echo.client.js",
+    '~/plugins/vue-toast-notification.client.js',
   ],
+
+
 
   runtimeConfig: {
     public: {
