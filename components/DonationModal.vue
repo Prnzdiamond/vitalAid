@@ -162,8 +162,8 @@ onMounted(() => {
   }
 
   // Check if we have verification data passed as props
-  if (props.verificationData) {
-    const { verified, donationId, error } = props.verificationData;
+   if (props.verificationData) {
+    const { verified, donationId, reference, trxref, error } = props.verificationData;
     
     if (donationId) {
       if (verified === 'true') {
@@ -172,8 +172,13 @@ onMounted(() => {
       } else if (verified === 'false') {
         // Payment verification failed during redirect
         handlePaymentFailure();
-      } else {
+      } else if (reference || trxref) {
+        // We have Paystack reference parameters - this indicates a redirect from Paystack
         // We need to verify the payment ourselves
+        verifyingPayment.value = true;
+        verifyPayment(donationId);
+      } else {
+        // No specific indicators, but we have a donation ID, so verify
         verifyingPayment.value = true;
         verifyPayment(donationId);
       }
@@ -188,24 +193,30 @@ onMounted(() => {
   const urlParams = new URLSearchParams(window.location.search);
   const verified = urlParams.get('verified');
   const donationId = urlParams.get('donation_id');
+  const reference = urlParams.get('reference');
+  const trxref = urlParams.get('trxref');
   const error = urlParams.get('error');
   
-  if (donationId) {
+ if (donationId) {
     if (verified === 'true') {
       // Payment was already verified by the backend during redirect
       handlePaymentSuccess(donationId);
     } else if (verified === 'false') {
       // Payment verification failed during redirect
       handlePaymentFailure();
-    } else {
+    } else if (reference || trxref) {
+      // We have a reference from Paystack - this is a redirect from payment gateway
       // We need to verify the payment ourselves
+      verifyingPayment.value = true;
+      verifyPayment(donationId);
+    } else {
+      // No specific indicators, but we have a donation ID, so verify
       verifyingPayment.value = true;
       verifyPayment(donationId);
     }
   } else if (error) {
     handlePaymentError(error);
   }
-  
   // Clear URL parameters after processing
   if (window.history.replaceState) {
     const newUrl = window.location.pathname;

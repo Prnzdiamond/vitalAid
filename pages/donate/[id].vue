@@ -304,23 +304,27 @@ onMounted(async () => {
     donation.value = result.data.request;
 
     // Check URL parameters to see if we're returning from a payment process
-    const urlParams = new URLSearchParams(window.location.search);
+       const urlParams = new URLSearchParams(window.location.search);
     const verified = urlParams.get('verified');
     const donationId = urlParams.get('donation_id');
+    const reference = urlParams.get('reference');
+    const trxref = urlParams.get('trxref');
     const error = urlParams.get('error');
     
     // If we have payment-related parameters, prepare verification data and open the modal
-    if (donationId || error) {
+    if (donationId || error || reference || trxref) {
       verificationData.value = {
         verified,
         donationId,
+        reference,
+        trxref,
         error
       };
       showModal.value = true;
     }
     
     // Clear URL parameters after processing
-    if (window.history.replaceState && (donationId || error)) {
+    if (window.history.replaceState && (donationId || error || reference || trxref)) {
       const newUrl = window.location.pathname;
       window.history.replaceState({}, document.title, newUrl);
     }
