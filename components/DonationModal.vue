@@ -16,7 +16,7 @@
       </div>
 
       <!-- Donation Form -->
-      <form v-if="!processingPayment" @submit.prevent="handleDonate" class="space-y-6">
+      <form v-if="!processingPayment && !verifyingPayment" @submit.prevent="handleDonate" class="space-y-6">
         <!-- Amount Input -->
         <div>
           <label for="amount" class="block text-sm font-medium text-gray-700 mb-1">Amount (₦)</label>
@@ -162,7 +162,7 @@ onMounted(() => {
   }
 
   // Check if we have verification data passed as props
-   if (props.verificationData) {
+  if (props.verificationData) {
     const { verified, donationId, reference, trxref, error } = props.verificationData;
     
     if (donationId) {
@@ -172,11 +172,6 @@ onMounted(() => {
       } else if (verified === 'false') {
         // Payment verification failed during redirect
         handlePaymentFailure();
-      } else if (reference || trxref) {
-        // We have Paystack reference parameters - this indicates a redirect from Paystack
-        // We need to verify the payment ourselves
-        verifyingPayment.value = true;
-        verifyPayment(donationId);
       } else {
         // No specific indicators, but we have a donation ID, so verify
         verifyingPayment.value = true;
@@ -193,22 +188,15 @@ onMounted(() => {
   const urlParams = new URLSearchParams(window.location.search);
   const verified = urlParams.get('verified');
   const donationId = urlParams.get('donation_id');
-  const reference = urlParams.get('reference');
-  const trxref = urlParams.get('trxref');
   const error = urlParams.get('error');
   
- if (donationId) {
+  if (donationId) {
     if (verified === 'true') {
       // Payment was already verified by the backend during redirect
       handlePaymentSuccess(donationId);
     } else if (verified === 'false') {
       // Payment verification failed during redirect
       handlePaymentFailure();
-    } else if (reference || trxref) {
-      // We have a reference from Paystack - this is a redirect from payment gateway
-      // We need to verify the payment ourselves
-      verifyingPayment.value = true;
-      verifyPayment(donationId);
     } else {
       // No specific indicators, but we have a donation ID, so verify
       verifyingPayment.value = true;
@@ -217,6 +205,7 @@ onMounted(() => {
   } else if (error) {
     handlePaymentError(error);
   }
+  
   // Clear URL parameters after processing
   if (window.history.replaceState) {
     const newUrl = window.location.pathname;
@@ -285,7 +274,6 @@ const handlePaymentError = (errorType) => {
   emit('close');
 };
 
-
 const handleDonate = async () => {
   if (!donationAmount.value) {
     swal.fire({
@@ -338,8 +326,7 @@ const handleDonate = async () => {
   }
 };
 
-// Modified version of verifyPayment function with improved error handling
-
+// We don't need this method anymore since verification happens server-side
 const verifyPayment = async (donationId) => {
   try {
     // Check if we have a valid token before making the request
@@ -356,6 +343,8 @@ const verifyPayment = async (donationId) => {
       }
     }
 
+    // In our new flow, this only gets donation details - the payment was already
+    // verified by the backend during the redirect
     const response = await donationStore.verifyDonation(donationId);
     
     if (response.success) {

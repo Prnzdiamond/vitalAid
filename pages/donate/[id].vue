@@ -181,12 +181,12 @@
 
    <!-- Donation Modal -->
     <DonationModal
-  v-if="showModal"
-  @close="showModal = false; verificationData = null"
-  :id="donation.id"
-  :verification-data="verificationData"
-  @donation-successful="handleDonationSuccessful"
-/>
+      v-if="showModal"
+      @close="showModal = false; verificationData = null"
+      :id="donation.id"
+      :verification-data="verificationData"
+      @donation-successful="handleDonationSuccessful"
+    />
   </div>
 </template>
 
@@ -195,6 +195,7 @@ import { ref, onMounted, computed } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import { useDonationStore } from "@/stores/donationStore";
 import { useAuthStore } from "@/stores/authStore";
+import { useSwal } from '@/composables/useSwal';
 import DonationModal from "@/components/DonationModal.vue";
 
 const route = useRoute();
@@ -209,13 +210,9 @@ const user = computed(() => authStore.user);
 const { swal, toast } = useSwal();
 const verificationData = ref(null);
 
-
-
 // Check if current user is the owner of this donation request
-
 const isOwner = computed(() => {
   if (!donation.value || !authStore.user) return false;
-  console.log("Checking ownership:", donation.value.org_id, authStore.user.id, donation);
   return donation.value.org_id === authStore.user.id;
 });
 
@@ -248,7 +245,7 @@ const deleteRequest = async (id) => {
       try {
         await donationStore.deleteDonationRequest(id);
         toast.fire('Donation request deleted', { type: 'success' });
-        requests.value = requests.value.filter((r) => r.id !== id);
+        router.push('/donate'); // Navigate away after deletion
       } catch (err) {
         toast.fire('Failed to delete request', { type: 'error' });
       }
@@ -258,7 +255,7 @@ const deleteRequest = async (id) => {
   });
 };
 
-// Mark donation as completed (placeholder function)
+// Mark donation as completed
 const markAsCompleted = async (requestId) => {
   // Check if the request has not yet received full donations
   if (donation.value.amount_needed > donation.value.amount_received) {
@@ -277,26 +274,68 @@ const markAsCompleted = async (requestId) => {
   }
 
   // Proceed to mark as completed
-  const result = await donationStore.markAsCompleted(requestId);
+  try {
+    const result = await donationStore.markAsCompleted(requestId);
 
-  if (result.success) {
-    await swal.fire({
-      title: 'Success!',
-      text: 'The request has been marked as completed.',
-      icon: 'success',
-    });
+    if (result.success) {
+      await swal.fire({
+        title: 'Success!',
+        text: 'The request has been marked as completed.',
+        icon: 'success',
+      });
 
-    // Update the donation data
-    donation.value = result.data.request;
-  } else {
+      // Update the donation data
+      donation.value = result.data.request;
+    } else {
+      await swal.fire({
+        title: 'Error!',
+        text: result.message || 'Something went wrong.',
+        icon: 'error',
+      });
+    }
+  } catch (error) {
     await swal.fire({
       title: 'Error!',
-      text: result.message || 'Something went wrong.',
+      text: 'Failed to update donation request status.',
       icon: 'error',
     });
   }
 };
 
+// Function to open donation modal
+const openDonateModal = () => {
+  if (!authStore.isAuthenticated) {
+    // Redirect to login if not authenticated
+    const loginPath = `/auth/login?redirect=${encodeURIComponent(route.fullPath)}`;
+    router.push(loginPath);
+    return;
+  }
+  
+  showModal.value = true;
+};
+
+// Handler for successful donation
+const handleDonationSuccessful = (newDonation) => {
+  if (donation.value) {
+    // Update the donation amount received
+    donation.value.amount_received += newDonation.amount;
+    
+    // Update the status if fully funded
+    if (donation.value.amount_received >= donation.value.amount_needed && 
+        donation.value.status !== 'completed') {
+      donation.value.status = 'funded';
+    }
+    
+    // Add the new donation to the donations list
+    if (donation.value.donations) {
+      donation.value.donations.unshift(newDonation); // Add to the beginning of the list
+      // Optionally limit the number of recent donors displayed
+      donation.value.donations = donation.value.donations.slice(0, 3);
+    } else {
+      donation.value.donations = [newDonation];
+    }
+  }
+};
 
 onMounted(async () => {
   try {
@@ -304,7 +343,7 @@ onMounted(async () => {
     donation.value = result.data.request;
 
     // Check URL parameters to see if we're returning from a payment process
-       const urlParams = new URLSearchParams(window.location.search);
+    const urlParams = new URLSearchParams(window.location.search);
     const verified = urlParams.get('verified');
     const donationId = urlParams.get('donation_id');
     const reference = urlParams.get('reference');
@@ -321,36 +360,18 @@ onMounted(async () => {
         error
       };
       showModal.value = true;
-    }
-    
-    // Clear URL parameters after processing
-    if (window.history.replaceState && (donationId || error || reference || trxref)) {
-      const newUrl = window.location.pathname;
-      window.history.replaceState({}, document.title, newUrl);
+      
+      // Clear URL parameters after processing
+      if (window.history.replaceState) {
+        const newUrl = window.location.pathname;
+        window.history.replaceState({}, document.title, newUrl);
+      }
     }
   } catch (err) {
     error.value = "Unable to fetch donation request. Please try again later.";
+    console.error("Error fetching donation request:", err);
   } finally {
     loading.value = false;
   }
 });
-
-const handleDonationSuccessful = (newDonation) => {
-  if (donation.value) {
-    donation.value.amount_received += newDonation.amount;
-    if (donation.value.donations) {
-      donation.value.donations.unshift(newDonation); // Add to the beginning of the list
-      // Optionally limit the number of recent donors displayed
-      donation.value.donations = donation.value.donations.slice(0, 3);
-    } else {
-      donation.value.donations = [newDonation];
-    }
-  }
-};
-
-function openDonateModal() {
-  console.log("Opening donation modal for request ID:", donation.value.id);
-  showModal.value = true;
-  console.log("Modal state:", showModal.value);
-}
 </script>

@@ -124,14 +124,20 @@ export const useDonationStore = defineStore("donation", {
             });
         },
 
-        // ✅ NEW: Verify donation payment status
+        // ✅ Verify donation payment status
+        // Updated to handle the new flow where verification happens server-side first
         async verifyDonation(donationId) {
             const config = useRuntimeConfig();
-            return await $fetch(`/donations/verify/${donationId}`, {
-                method: "GET",
-                headers: { Authorization: `Bearer ${useToken().get()}` },
-                baseURL: config.public.apiBase,
-            });
+            try {
+                return await $fetch(`/donations/verify/${donationId}`, {
+                    method: "GET",
+                    headers: { Authorization: `Bearer ${useToken().get()}` },
+                    baseURL: config.public.apiBase,
+                });
+            } catch (error) {
+                console.error("Error verifying donation:", error);
+                throw error;
+            }
         },
 
         // ✅ View my donations
