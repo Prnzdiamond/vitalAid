@@ -134,26 +134,29 @@
         <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-green-500"></div>
       </div>
       
-      <div v-else-if="reactions && reactions.length > 0" class="max-h-64 overflow-y-auto space-y-4">
-        <div v-for="reaction in reactions" :key="reaction.id" class="bg-white p-4 rounded-lg border">
-          <div class="flex justify-between items-start mb-2">
-            <div class="flex items-center gap-2">
-              <i class="fas fa-user-circle text-gray-400"></i>
-              <span class="font-medium">{{ reaction.user_name }}</span>
-              <span 
-                :class="reaction.reaction_type === 'like' ? 'text-green-500' : 'text-red-500'"
-              >
-                <i :class="reaction.reaction_type === 'like' ? 'fas fa-thumbs-up' : 'fas fa-thumbs-down'"></i>
+      <!-- Scrollable feedback container with fixed height -->
+      <div v-else-if="reactions && reactions.length > 0" class="max-h-[300px] overflow-y-auto pr-2 custom-scrollbar">
+        <div class="space-y-4">
+          <div v-for="reaction in reactions" :key="reaction.id" class="bg-white p-4 rounded-lg border">
+            <div class="flex justify-between items-start mb-2">
+              <div class="flex items-center gap-2">
+                <i class="fas fa-user-circle text-gray-400"></i>
+                <span class="font-medium">{{ reaction.user_name }}</span>
+                <span 
+                  :class="reaction.reaction_type === 'like' ? 'text-green-500' : 'text-red-500'"
+                >
+                  <i :class="reaction.reaction_type === 'like' ? 'fas fa-thumbs-up' : 'fas fa-thumbs-down'"></i>
+                </span>
+              </div>
+              <span class="text-xs text-gray-500">
+                <i class="far fa-clock mr-1"></i> {{ formatDate(reaction.created_at) }}
               </span>
             </div>
-            <span class="text-xs text-gray-500">
-              <i class="far fa-clock mr-1"></i> {{ formatDate(reaction.created_at) }}
-            </span>
+            
+            <p v-if="reaction.comment" class="text-gray-700">
+              {{ reaction.comment }}
+            </p>
           </div>
-          
-          <p v-if="reaction.comment" class="text-gray-700">
-            {{ reaction.comment }}
-          </p>
         </div>
       </div>
       
@@ -330,3 +333,28 @@ onMounted(() => {
   }
 });
 </script>
+
+<style scoped>
+.custom-scrollbar {
+  scrollbar-width: thin;
+  scrollbar-color: #cbd5e0 #f7fafc;
+}
+
+.custom-scrollbar::-webkit-scrollbar {
+  width: 6px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: #f7fafc;
+  border-radius: 8px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background-color: #cbd5e0;
+  border-radius: 8px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background-color: #a0aec0;
+}
+</style>

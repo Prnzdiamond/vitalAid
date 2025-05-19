@@ -41,7 +41,24 @@ export const useNotificationStore = defineStore("notification", {
                 console.error("Error fetching notifications:", error);
             }
         },
+        async markAllasRead() {
+            const config = useRuntimeConfig();
+            try {
+                await $fetch(`/user/notifications/mark-all-read`, {
+                    method: "POST",
+                    headers: { Authorization: `Bearer ${useToken().get()}` },
+                    baseURL: config.public.apiBase,
+                });
 
+                // Clear all unread notifications
+                this.unreadNotifications = [];
+
+                // Also clear any matching popup notifications
+                this.popupNotifications = [];
+            } catch (error) {
+                console.error("Error marking all notifications as read:", error);
+            }
+        },
         async dismissNotification(notificationId) {
             const config = useRuntimeConfig();
             try {

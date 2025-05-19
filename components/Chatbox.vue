@@ -2,79 +2,139 @@
   <div class="relative w-full max-w-4xl mx-auto bg-white rounded-lg shadow-lg border overflow-hidden">
     <div v-if="activeConsultation" class="flex flex-col h-[70vh] md:h-[70vh] sm:h-[calc(100vh-100px)]">
       <!-- Chat Header -->
-      <div class="bg-gradient-to-r from-blue-600 to-blue-700 text-white p-2 shadow-md flex items-center justify-between">
-        <h2 class="text-base font-semibold truncate">
-          Consultation with {{ activeConsultation?.user_tag }}
-        </h2>
-        <div class="text-xs px-2 py-1 rounded-full ml-2" :class="isCompleted ? 'bg-gray-600' : 'bg-blue-800'">
-          {{ isCompleted ? 'Completed' : 'Active' }}
+      <div class="bg-gradient-to-r from-blue-600 to-blue-700 text-white p-4 shadow-md flex items-center justify-between">
+        <div class="flex items-center">
+          <div class="w-10 h-10 rounded-full bg-blue-800 flex items-center justify-center text-white mr-3">
+            {{ getInitials(activeConsultation?.user_tag || 'User') }}
+          </div>
+          <div>
+            <h2 class="text-lg font-semibold">
+              {{ activeConsultation?.user_tag }}
+            </h2>
+            <div class="flex items-center text-xs text-blue-100">
+              <span class="inline-block w-2 h-2 rounded-full mr-1" 
+                    :class="isCompleted ? 'bg-gray-300' : 'bg-green-400 animate-pulse'"></span>
+              {{ isCompleted ? 'Completed' : 'Active' }}
+            </div>
+          </div>
+        </div>
+        <div class="flex items-center">
+          <button v-if="!isCompleted" @click="endChat" 
+                  class="bg-red-500 hover:bg-red-600 text-white text-xs px-3 py-1 rounded-full transition-all">
+            <i class="fas fa-times mr-1"></i> End Chat
+          </button>
         </div>
       </div>
 
       <!-- Messages Container -->
-      <div class="flex-1 overflow-y-auto p-3 bg-gray-50 scroll-smooth" ref="messagesContainer">
-        <div v-for="msg in currentMessages" :key="msg.timestamp" class="mb-3 animate-fadeIn">
-          <div :class="getMessageAlignment(msg.sender)">
-            <div :class="{ 'max-w-[80%]': true, 'order-1': msg.sender === user._tag }">
-              <!-- Sender name -->
-              <span class="block text-xs font-semibold mb-0.5 px-1" :class="getTextAlignment(msg.sender)">
-                {{ msg.sender }}
-              </span>
-              
-              <!-- Message bubble -->
-              <div :class="getMessageStyle(msg)">
-                {{ msg.message }}
-              </div>
-              
-              <!-- Timestamp -->
-              <span class="block text-xs text-gray-400 mt-0.5 px-1" :class="getTextAlignment(msg.sender)">
-                {{ formatTimestamp(msg.timestamp) }}
+      <div class="flex-1 overflow-y-auto p-4 bg-gray-50 scroll-smooth" ref="messagesContainer">
+        <!-- Loading indicator -->
+        <div v-if="messageStore.isLoading || loadingMessages" class="flex justify-center items-center h-full">
+          <div class="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-blue-500"></div>
+        </div>
+        
+        <template v-else>
+          <!-- Date separator -->
+          <div class="flex justify-center mb-4">
+            <span class="text-xs bg-gray-200 text-gray-600 px-3 py-1 rounded-full">
+              {{ formatDate(new Date()) }}
+            </span>
+          </div>
+          
+          <div v-for="(msg, index) in groupedMessages" :key="index" class="mb-4">
+            <!-- Date separator if needed -->
+            <div v-if="index > 0 && shouldShowDateSeparator(groupedMessages[index-1][0], msg[0])" class="flex justify-center my-4">
+              <span class="text-xs bg-gray-200 text-gray-600 px-3 py-1 rounded-full">
+                {{ formatDate(new Date(msg[0].timestamp)) }}
               </span>
             </div>
+            
+            <!-- Message group -->
+            <div :class="getMessageGroupAlignment(msg[0].sender)" class="mb-4">
+              <!-- Sender avatar for others' messages -->
+              <div v-if="msg[0].sender !== user._tag" class="flex-shrink-0 w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 mr-2">
+                {{ getInitials(msg[0].sender) }}
+              </div>
+              
+              <div class="flex flex-col max-w-[75%]">
+                <!-- Sender name -->
+                <span v-if="msg[0].sender !== 'System'" class="text-xs font-semibold mb-1 px-1" :class="getTextAlignment(msg[0].sender)">
+                  {{ msg[0].sender }}
+                </span>
+                
+                <!-- Message bubbles -->
+                <div class="flex flex-col gap-1">
+                  <div v-for="(message, msgIndex) in msg" :key="msgIndex" 
+                       :class="getMessageStyle(message)"
+                       class="px-4 py-2 rounded-lg break-words shadow-sm animate-fadeIn">
+                    {{ message.message }}
+                    
+                    <!-- Timestamp for last message in group -->
+                    <span v-if="msgIndex === msg.length - 1" class="block text-xs opacity-70 mt-1" :class="message.sender === user._tag ? 'text-blue-100' : 'text-gray-500'">
+                      {{ formatMessageTime(message.timestamp) }}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
-        </div>
+          
+          <!-- Typing indicator -->
+          <div v-if="isTyping" class="flex items-center mb-4 ml-10">
+            <div class="bg-gray-200 px-4 py-2 rounded-lg">
+              <div class="flex space-x-1">
+                <div class="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style="animation-delay: 0ms"></div>
+                <div class="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style="animation-delay: 150ms"></div>
+                <div class="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style="animation-delay: 300ms"></div>
+              </div>
+            </div>
+          </div>
+        </template>
         
         <!-- Scroll to bottom indicator -->
         <button v-if="showScrollToBottom" @click="scrollToBottom" 
-             class="fixed bottom-24 right-6 bg-blue-500 text-white p-2 rounded-full cursor-pointer shadow-lg hover:bg-blue-600 transition-all hover:-translate-y-1 active:translate-y-0">
-          <svg class="h-5 w-5" viewBox="0 0 24 24">
-            <path fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
-          </svg>
+             class="fixed bottom-24 right-6 bg-blue-500 text-white p-2 rounded-full cursor-pointer shadow-lg hover:bg-blue-600 transition-all hover:-translate-y-1 active:translate-y-0 z-10">
+          <i class="fas fa-chevron-down"></i>
         </button>
       </div>
 
       <!-- Input & Send -->
-      <div v-if="!isCompleted" class="border-t py-2 px-3 bg-white">
+      <div v-if="!isCompleted" class="border-t py-3 px-4 bg-white">
         <div class="flex items-center gap-2">
-          <input 
-            v-model="newMessage" 
-            @keyup.enter="sendMessage" 
-            placeholder="Type your message..." 
-            class="flex-grow p-2 border rounded-lg focus:outline-none focus:ring-1 focus:ring-blue-400 bg-gray-50 text-sm"
-          >
+          <div class="flex-grow relative">
+            <input 
+              v-model="newMessage" 
+              @keyup.enter="sendMessage" 
+              placeholder="Type your message..." 
+              class="w-full p-3 pr-10 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-400 bg-gray-50"
+            >
+            <!-- Emoji button -->
+            <button class="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600">
+              <i class="far fa-smile"></i>
+            </button>
+          </div>
+          
+          <!-- Attachment button -->
+          <button class="p-3 rounded-lg bg-gray-100 text-gray-600 hover:bg-gray-200 transition-colors">
+            <i class="fas fa-paperclip"></i>
+          </button>
+          
+          <!-- Send button -->
           <button @click="sendMessage" 
-                  class="bg-blue-500 text-white p-2 rounded-lg hover:bg-blue-600 transition-all hover:-translate-y-1 active:translate-y-0 flex-shrink-0 flex items-center justify-center">
-            <svg class="h-5 w-5" viewBox="0 0 24 24">
-              <path fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
-            </svg>
+                  class="p-3 rounded-lg bg-blue-500 text-white hover:bg-blue-600 transition-all hover:-translate-y-1 active:translate-y-0 flex items-center justify-center">
+            <i class="fas fa-paper-plane"></i>
           </button>
         </div>
 
-        <!-- Actions -->
-        <div class="flex justify-between mt-2 gap-2">
-          <button @click="endChat" 
-                  class="bg-red-500 text-white px-3 py-1 rounded-md hover:bg-red-600 transition-all hover:-translate-y-1 active:translate-y-0 flex items-center text-xs">
-            <svg class="h-4 w-4 mr-1" viewBox="0 0 24 24">
-              <path fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-            </svg>
-            End Chat
-          </button>
-          <button v-if="canTakeOver" @click="takeOverChat"
-                  class="bg-yellow-500 text-white px-3 py-1 rounded-md hover:bg-yellow-600 transition-all hover:-translate-y-1 active:translate-y-0 flex items-center text-xs">
-            <svg class="h-4 w-4 mr-1" viewBox="0 0 24 24">
-              <path fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
-            </svg>
-            Take Over
+        <!-- Quick actions -->
+        <div class="flex mt-2 gap-2 overflow-x-auto py-1 custom-scrollbar-x">
+          <button 
+            v-for="(action, index) in quickActions" 
+            :key="index"
+            @click="quickReply(action)"
+            class="px-3 py-1 bg-gray-100 text-gray-700 rounded-full text-xs whitespace-nowrap hover:bg-gray-200 transition-colors"
+          >
+            {{ action }}
           </button>
         </div>
       </div>
@@ -89,12 +149,13 @@
 
     <div v-else class="flex items-center justify-center p-6 h-64">
       <div class="text-center">
+        <div class="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
+          <i class="fas fa-comment-dots text-blue-500 text-2xl"></i>
+        </div>
         <p class="text-gray-500 mb-3">{{ loadingConsultation ? 'Loading...' : canRequestConsultation ? 'No active consultation' : 'You already have an active consultation in another window' }}</p>
         <button v-if="canRequestConsultation" @click="requestNewConsultation"
                 class="bg-green-500 text-white px-5 py-2 rounded-lg font-medium hover:bg-green-600 transition-all hover:-translate-y-1 active:translate-y-0 flex items-center justify-center mx-auto">
-            <svg class="h-5 w-5 mr-2" viewBox="0 0 24 24">
-              <path fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-            </svg>
+            <i class="fas fa-plus mr-2"></i>
             Request Consultation
         </button>
       </div>
@@ -111,11 +172,24 @@ import { useSwal } from '~/composables/useSwal';
 import ConsultationActions from './ConsultationActions.vue';
 
 const props = defineProps({
-  consultationId: { type: String, default: null },
-  consultation: { type: Object, default: null },
-  isCompleted: { type: Boolean, default: false },
-  isRequester: { type: Boolean, default: false }
+  consultationId: {
+    type: String,
+    default: null
+  },
+  consultation: {
+    type: Object,
+    default: null
+  },
+  isRequester: {
+    type: Boolean,
+    default: false
+  },
+  isCompleted: {
+    type: Boolean,
+    default: false
+  }
 });
+
 
 // Store setup
 const consultationStore = useConsultationStore();
@@ -128,23 +202,36 @@ const user = computed(() => authStore.user);
 const newMessage = ref('');
 const messagesContainer = ref(null);
 const showScrollToBottom = ref(false);
-const loadingConsultation = ref(true);
+const loadingConsultation = ref(false);
+const loadingMessages = ref(false);
 const userRequestedConsultation = ref(null);
+const isTyping = ref(false);
+const localConsultationData = ref(null);
+
+// Quick action suggestions
+const quickActions = [
+  "Hello, how can I help you?",
+  "Could you provide more details?",
+  "I'll look into this for you",
+  "Thank you for your patience",
+  "Is there anything else you need help with?"
+];
 
 // Computed properties
 const activeConsultation = computed(() => {
-  // Priority 1: User's personally requested consultation
-  if (userRequestedConsultation.value) return userRequestedConsultation.value;
-  
-  // Priority 2: Consultation prop if it's the user's own
-  if (props.consultation && isUserOwnConsultation(props.consultation)) {
+  // Priority 1: Local consultation data (from props)
+  if (props.consultation) {
     return props.consultation;
   }
   
-  // Priority 3: Active consultation in store if it's the user's own
-  if (consultationStore.activeConsultationData && 
-      isUserOwnConsultation(consultationStore.activeConsultationData)) {
-    return consultationStore.activeConsultationData;
+  // Priority 2: User's personally requested consultation
+  if (userRequestedConsultation.value) {
+    return userRequestedConsultation.value;
+  }
+  
+  // Priority 3: Local consultation data (from fetch)
+  if (localConsultationData.value) {
+    return localConsultationData.value;
   }
   
   return null;
@@ -165,15 +252,52 @@ const currentMessages = computed(() => {
   return messageStore.getMessages(activeConsultation.value.id);
 });
 
+// Group messages by sender for better UI
+const groupedMessages = computed(() => {
+  if (!currentMessages.value.length) return [];
+  
+  const groups = [];
+  let currentGroup = [];
+  
+  currentMessages.value.forEach((msg, index) => {
+    // Start a new group if:
+    // 1. This is the first message
+    // 2. The sender changed
+    // 3. More than 2 minutes passed since the last message
+    const prevMsg = index > 0 ? currentMessages.value[index - 1] : null;
+    
+    const shouldStartNewGroup = 
+      !prevMsg || 
+      prevMsg.sender !== msg.sender ||
+      (prevMsg.timestamp && msg.timestamp && 
+       new Date(msg.timestamp) - new Date(prevMsg.timestamp) > 2 * 60 * 1000);
+    
+    if (shouldStartNewGroup) {
+      if (currentGroup.length > 0) {
+        groups.push([...currentGroup]);
+      }
+      currentGroup = [msg];
+    } else {
+      currentGroup.push(msg);
+    }
+  });
+  
+  if (currentGroup.length > 0) {
+    groups.push(currentGroup);
+  }
+  
+  return groups;
+});
+
 // Utility functions
 function isUserOwnConsultation(consultation) {
   return consultation && user.value && consultation.user_id === user.value.id;
 }
 
-function getMessageAlignment(sender) {
+function getMessageGroupAlignment(sender) {
   if (sender === user.value?._tag) return 'flex justify-end';
   if (sender === 'System') return 'flex justify-center';
-  return 'flex justify-start';
+  return 'flex items-start';
 }
 
 function getTextAlignment(sender) {
@@ -183,26 +307,61 @@ function getTextAlignment(sender) {
 }
 
 function getMessageStyle(msg) {
-  const baseClasses = 'px-3 py-1.5 rounded-lg break-words';
-  
   if (msg.sender === 'System') {
-    return `${baseClasses} bg-green-500 text-white text-center text-sm px-4 py-0.5 rounded-full mx-auto`;
+    return 'bg-green-500 text-white text-center text-sm px-4 py-1 rounded-full mx-auto';
   }
   
   if (msg.temp) {
-    return `${baseClasses} bg-white text-gray-500 border border-gray-200 italic`;
+    return 'bg-white text-gray-500 border border-gray-200 italic';
   }
   
   if (msg.sender === user.value?._tag) {
-    return `${baseClasses} bg-blue-600 text-white rounded-tr-none`;
+    return 'bg-blue-600 text-white rounded-tr-none';
   }
   
-  return `${baseClasses} bg-gray-200 text-gray-800 rounded-tl-none`;
+  return 'bg-gray-200 text-gray-800 rounded-tl-none';
 }
 
-function formatTimestamp(timestamp) {
+function formatMessageTime(timestamp) {
   if (!timestamp) return 'Sending...';
   return new Date(timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+}
+
+function formatDate(date) {
+  if (!date) return '';
+  
+  const today = new Date();
+  const yesterday = new Date(today);
+  yesterday.setDate(yesterday.getDate() - 1);
+  
+  if (date.toDateString() === today.toDateString()) {
+    return 'Today';
+  } else if (date.toDateString() === yesterday.toDateString()) {
+    return 'Yesterday';
+  } else {
+    return date.toLocaleDateString('en-US', { 
+      weekday: 'long',
+      month: 'short', 
+      day: 'numeric' 
+    });
+  }
+}
+
+function shouldShowDateSeparator(prevMsg, currentMsg) {
+  if (!prevMsg.timestamp || !currentMsg.timestamp) return false;
+  
+  const prevDate = new Date(prevMsg.timestamp);
+  const currentDate = new Date(currentMsg.timestamp);
+  
+  return prevDate.toDateString() !== currentDate.toDateString();
+}
+
+function getInitials(name) {
+  if (!name) return '?';
+  return name.split(' ')
+    .map(part => part.charAt(0).toUpperCase())
+    .join('')
+    .substring(0, 2);
 }
 
 function scrollToBottom() {
@@ -220,6 +379,11 @@ const sendMessage = () => {
   }
 };
 
+const quickReply = (message) => {
+  newMessage.value = message;
+  sendMessage();
+};
+
 const requestNewConsultation = async () => {
   if (!canRequestConsultation.value) {
     swal.fire({
@@ -231,10 +395,16 @@ const requestNewConsultation = async () => {
   }
 
   try {
+    loadingConsultation.value = true;
     const newConsultation = await consultationStore.requestConsultation();
+    
     if (newConsultation) {
       userRequestedConsultation.value = newConsultation;
-      consultationStore.setActiveConsultation(newConsultation.id);
+      
+      // Don't update the global store if we're in a popup
+      if (!props.consultation) {
+        consultationStore.setActiveConsultation(newConsultation.id);
+      }
     }
   } catch (error) {
     swal.fire({
@@ -242,6 +412,8 @@ const requestNewConsultation = async () => {
       title: 'Error',
       text: 'Failed to request consultation. Please try again.'
     });
+  } finally {
+    loadingConsultation.value = false;
   }
 };
 
@@ -266,12 +438,21 @@ const endChat = () => {
   }).then(async (result) => {
     if (result.isConfirmed) {
       await consultationStore.endConsultation(activeConsultation.value.id);
-      messageStore.clearMessages(activeConsultation.value.id);
       
-      // Reset consultation data
-      consultationStore.activeConsultationId = null;
-      consultationStore.activeConsultationData = null;
+      // Clear messages for this consultation
+      if (messageStore.messagesByConsultation[activeConsultation.value.id]) {
+        messageStore.messagesByConsultation[activeConsultation.value.id] = [];
+      }
+      
+      // Reset local state
       userRequestedConsultation.value = null;
+      localConsultationData.value = null;
+      
+      // Only reset global state if we're not in a popup
+      if (!props.consultation) {
+        consultationStore.activeConsultationId = null;
+        consultationStore.activeConsultationData = null;
+      }
       
       swal.fire({
         icon: 'success',
@@ -284,36 +465,14 @@ const endChat = () => {
   });
 };
 
-const takeOverChat = () => {
-  if (!activeConsultation.value?.id || !canTakeOver.value) {
-    swal.fire({
-      icon: 'warning',
-      title: 'Cannot Take Over Chat',
-      text: 'No active chat to take over.'
-    });
-    return;
+// Simulate typing indicator occasionally
+const simulateTypingIndicator = () => {
+  if (Math.random() > 0.7 && !isTyping.value && !props.isCompleted) {
+    isTyping.value = true;
+    setTimeout(() => {
+      isTyping.value = false;
+    }, 2000 + Math.random() * 1000);
   }
-
-  swal.fire({
-    title: 'Take Over Chat',
-    text: 'Are you sure you want to take over this chat?',
-    icon: 'question',
-    showCancelButton: true,
-    confirmButtonColor: '#3085d6',
-    cancelButtonColor: '#d33',
-    confirmButtonText: 'Yes, take over!'
-  }).then(async (result) => {
-    if (result.isConfirmed) {
-      await consultationStore.takeOverChat(activeConsultation.value.id);
-      swal.fire({
-        icon: 'success',
-        title: 'Chat Taken Over',
-        text: 'You have taken over this chat.',
-        timer: 1500,
-        showConfirmButton: false
-      });
-    }
-  });
 };
 
 // Lifecycle hooks and watchers
@@ -328,7 +487,35 @@ const setupScrollObserver = () => {
   scrollToBottom();
 };
 
+const loadConsultationData = async (consultationId) => {
+  if (!consultationId) return;
+  
+  loadingMessages.value = true;
+  try {
+    // Fetch consultation data
+    const consultation = await consultationStore.fetchConsultation(consultationId);
+    
+    if (consultation) {
+      // Store locally without affecting the global store
+      localConsultationData.value = consultation;
+      
+      // Fetch messages for this consultation
+      await messageStore.fetchMessages(consultationId);
+      
+      // Start listening for new messages
+      messageStore.listenForMessages(consultationId);
+    }
+  } catch (error) {
+    console.error("Failed to fetch consultation data:", error);
+  } finally {
+    loadingMessages.value = false;
+  }
+};
+
 const findUserOwnConsultation = async () => {
+  // Skip if we already have a consultation from props
+  if (props.consultation || props.consultationId) return;
+  
   loadingConsultation.value = true;
   try {
     if (!user.value) await authStore.fetchUser();
@@ -342,11 +529,17 @@ const findUserOwnConsultation = async () => {
       
       if (ownActiveConsultation) {
         userRequestedConsultation.value = ownActiveConsultation;
-        consultationStore.setActiveConsultation(ownActiveConsultation.id);
-      } else {
-        userRequestedConsultation.value = null;
-        consultationStore.activeConsultationId = null;
-        consultationStore.activeConsultationData = null;
+        
+        // Only update the global store if we're not in a popup
+        if (!props.consultation) {
+          consultationStore.setActiveConsultation(ownActiveConsultation.id);
+        }
+        
+        // Fetch messages for this consultation
+        await messageStore.fetchMessages(ownActiveConsultation.id);
+        
+        // Start listening for new messages
+        messageStore.listenForMessages(ownActiveConsultation.id);
       }
     }
   } catch (error) {
@@ -356,57 +549,101 @@ const findUserOwnConsultation = async () => {
   }
 };
 
+// Helper function to check if messages exist for a consultation
+const hasMessages = (consultationId) => {
+  return !!messageStore.messagesByConsultation[consultationId] && 
+         messageStore.messagesByConsultation[consultationId].length > 0;
+};
+
+// Watch for changes in messages to scroll to bottom
 watch(currentMessages, async () => {
   await nextTick();
   scrollToBottom();
+  simulateTypingIndicator();
 }, { deep: true });
 
+// Watch for changes in consultationId prop
 watch(() => props.consultationId, async (newId) => {
   if (newId) {
-    const consultation = await consultationStore.fetchConsultation(newId);
-    if (consultation && isUserOwnConsultation(consultation)) {
-      userRequestedConsultation.value = consultation;
-      consultationStore.setActiveConsultation(newId);
+    await loadConsultationData(newId);
+  }
+}, { immediate: true });
+
+// Watch for changes in consultation prop
+watch(() => props.consultation, (newConsultation) => {
+  if (newConsultation && newConsultation.id) {
+    // If we get a new consultation object via props, update local state
+    localConsultationData.value = newConsultation;
+    
+    // Ensure we have messages for this consultation
+    if (!hasMessages(newConsultation.id)) {
+      messageStore.fetchMessages(newConsultation.id);
     }
+    
+    // Start listening for new messages
+    messageStore.listenForMessages(newConsultation.id);
   }
 }, { immediate: true });
 
 onMounted(async () => {
   await authStore.fetchUser();
   
+  // If we have a consultationId prop, load that consultation
   if (props.consultationId) {
-    const consultation = await consultationStore.fetchConsultation(props.consultationId);
-    if (consultation && isUserOwnConsultation(consultation)) {
-      userRequestedConsultation.value = consultation;
-      consultationStore.setActiveConsultation(props.consultationId);
+    await loadConsultationData(props.consultationId);
+  } 
+  // If we have a consultation prop, use that
+  else if (props.consultation) {
+    localConsultationData.value = props.consultation;
+    
+    // Ensure we have messages for this consultation
+    if (!hasMessages(props.consultation.id)) {
+      await messageStore.fetchMessages(props.consultation.id);
     }
-  } else if (props.consultation && isUserOwnConsultation(props.consultation)) {
-    userRequestedConsultation.value = props.consultation;
-    consultationStore.setActiveConsultation(props.consultation.id);
-  } else {
+    
+    // Start listening for new messages
+    messageStore.listenForMessages(props.consultation.id);
+  } 
+  // Otherwise, try to find the user's active consultation
+  else {
     await findUserOwnConsultation();
   }
 
   nextTick(setupScrollObserver);
-  
-  document.addEventListener('consultation:updated', (event) => {
-    const updatedConsultation = event.detail.consultation;
-    if (updatedConsultation && isUserOwnConsultation(updatedConsultation)) {
-      userRequestedConsultation.value = updatedConsultation;
-    }
-  });
 });
+
+
 </script>
 
-<style>
-@layer utilities {
-  .animate-fadeIn {
-    animation: fadeIn 0.3s ease-out;
-  }
-  
-  @keyframes fadeIn {
-    from { opacity: 0; transform: translateY(10px); }
-    to { opacity: 1; transform: translateY(0); }
-  }
+<style scoped>
+.animate-fadeIn {
+  animation: fadeIn 0.3s ease-out;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.custom-scrollbar-x {
+  scrollbar-width: thin;
+  scrollbar-color: #cbd5e0 #f7fafc;
+}
+
+.custom-scrollbar-x::-webkit-scrollbar {
+  height: 4px;
+}
+
+.custom-scrollbar-x::-webkit-scrollbar-track {
+  background: #f7fafc;
+}
+
+.custom-scrollbar-x::-webkit-scrollbar-thumb {
+  background-color: #cbd5e0;
+  border-radius: 4px;
+}
+
+.custom-scrollbar-x::-webkit-scrollbar-thumb:hover {
+  background-color: #a0aec0;
 }
 </style>

@@ -40,7 +40,8 @@
             v-if="donation.banner_url" 
             :src="donation.banner_url" 
             :alt="donation.title" 
-            class="w-full h-full object-cover"
+            class="w-full h-full object-cover cursor-pointer"
+            @click="openSlideshow(0)"
           />
           <div v-else class="w-full h-full flex items-center justify-center text-gray-400">
             <svg xmlns="http://www.w3.org/2000/svg" class="h-16 w-16" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -150,10 +151,15 @@
       </div>
       
       <!-- Gallery - only show if there are other images -->
-      <div v-if="donation.other_images && donation.other_images.length > 0" class="bg-white rounded-xl shadow-md p-6">
+      <div v-if="allImages.length > 1" class="bg-white rounded-xl shadow-md p-6">
         <h2 class="text-xl font-bold text-gray-800 mb-4">Gallery</h2>
         <div class="grid grid-cols-2 md:grid-cols-3 gap-4">
-          <div v-for="(image, index) in donation.other_images" :key="index" class="h-32 md:h-48 bg-gray-100 rounded-md overflow-hidden">
+          <div 
+            v-for="(image, index) in allImages.slice(1)" 
+            :key="index" 
+            class="h-32 md:h-48 bg-gray-100 rounded-md overflow-hidden cursor-pointer"
+            @click="openSlideshow(index + 1)"
+          >
             <img :src="image" :alt="`Gallery image ${index+1}`" class="w-full h-full object-cover" />
           </div>
         </div>
@@ -162,20 +168,22 @@
       <!-- Recent donors - if we have donation data -->
       <div v-if="donation.donations && donation.donations.length > 0" class="bg-white rounded-xl shadow-md p-6">
         <h2 class="text-xl font-bold text-gray-800 mb-4">Recent Donors</h2>
-        <ul class="divide-y divide-gray-200">
-          <li v-for="(donor, index) in donation.donations.slice(0,3)" :key="index" class="py-4 flex justify-between">
-            <div class="flex items-center">
-              <svg v-if="donor.is_anonymous" xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-gray-400 mr-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-              </svg>
-              <div>
-                <p class="font-medium text-gray-800">{{ donor.is_anonymous ? 'Anonymous Donor' : donor.user_tag }}</p>
-                <p class="text-sm text-gray-500">{{ formatDate(donor.created_at) }}</p>
+        <div class="max-h-64 overflow-y-auto pr-2 scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100">
+          <ul class="divide-y divide-gray-200">
+            <li v-for="(donor, index) in donation.donations" :key="index" class="py-4 flex justify-between">
+              <div class="flex items-center">
+                <svg v-if="donor.is_anonymous" xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-gray-400 mr-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                </svg>
+                <div>
+                  <p class="font-medium text-gray-800">{{ donor.is_anonymous ? 'Anonymous Donor' : donor.user_tag }}</p>
+                  <p class="text-sm text-gray-500">{{ formatDate(donor.created_at) }}</p>
+                </div>
               </div>
-            </div>
-            <span class="font-medium text-green-600">₦{{ formatNumber(donor.amount) }}</span>
-          </li>
-        </ul>
+              <span class="font-medium text-green-600">₦{{ formatNumber(donor.amount) }}</span>
+            </li>
+          </ul>
+        </div>
       </div>
     </div>
 
@@ -187,6 +195,14 @@
       :verification-data="verificationData"
       @donation-successful="handleDonationSuccessful"
     />
+
+    <!-- Image Slideshow Modal -->
+    <ImageSlideshow
+      v-if="showSlideshow"
+      :images="allImages"
+      :initial-index="currentSlideIndex"
+      @close="showSlideshow = false"
+    />
   </div>
 </template>
 
@@ -197,6 +213,7 @@ import { useDonationStore } from "@/stores/donationStore";
 import { useAuthStore } from "@/stores/authStore";
 import { useSwal } from '@/composables/useSwal';
 import DonationModal from "@/components/DonationModal.vue";
+import ImageSlideshow from "@/components/ImageSlideshow.vue";
 
 const route = useRoute();
 const router = useRouter();
@@ -209,6 +226,35 @@ const showModal = ref(false);
 const user = computed(() => authStore.user);
 const { swal, toast } = useSwal();
 const verificationData = ref(null);
+
+// Slideshow state
+const showSlideshow = ref(false);
+const currentSlideIndex = ref(0);
+
+// Computed property to combine banner and other images
+const allImages = computed(() => {
+  if (!donation.value) return [];
+  
+  const images = [];
+  
+  // Add banner image as the first image if it exists
+  if (donation.value.banner_url) {
+    images.push(donation.value.banner_url);
+  }
+  
+  // Add other images if they exist
+  if (donation.value.other_images && Array.isArray(donation.value.other_images)) {
+    images.push(...donation.value.other_images);
+  }
+  
+  return images;
+});
+
+// Function to open slideshow at a specific index
+const openSlideshow = (index) => {
+  currentSlideIndex.value = index;
+  showSlideshow.value = true;
+};
 
 // Check if current user is the owner of this donation request
 const isOwner = computed(() => {
@@ -329,8 +375,6 @@ const handleDonationSuccessful = (newDonation) => {
     // Add the new donation to the donations list
     if (donation.value.donations) {
       donation.value.donations.unshift(newDonation); // Add to the beginning of the list
-      // Optionally limit the number of recent donors displayed
-      donation.value.donations = donation.value.donations.slice(0, 3);
     } else {
       donation.value.donations = [newDonation];
     }
@@ -375,3 +419,30 @@ onMounted(async () => {
   }
 });
 </script>
+
+<style>
+/* Custom scrollbar styles */
+.scrollbar-thin::-webkit-scrollbar {
+  width: 6px;
+}
+
+.scrollbar-thin::-webkit-scrollbar-track {
+  background: #f1f1f1;
+  border-radius: 10px;
+}
+
+.scrollbar-thin::-webkit-scrollbar-thumb {
+  background: #d1d5db;
+  border-radius: 10px;
+}
+
+.scrollbar-thin::-webkit-scrollbar-thumb:hover {
+  background: #9ca3af;
+}
+
+/* For Firefox */
+.scrollbar-thin {
+  scrollbar-width: thin;
+  scrollbar-color: #d1d5db #f1f1f1;
+}
+</style>

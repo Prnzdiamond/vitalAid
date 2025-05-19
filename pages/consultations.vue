@@ -1,7 +1,7 @@
 <template>
   <div class="flex h-[calc(100vh-64px)]">
     <!-- Left side: Consultations List -->
-    <div class="flex-1 min-w-[300px] max-w-[400px] overflow-y-auto p-4 border-r border-gray-200 bg-white shadow-sm">
+    <div class="flex-1 min-w-[300px] max-w-[400px] flex flex-col p-4 border-r border-gray-200 bg-white shadow-sm">
       <h3 class="text-xl font-semibold mb-4 text-blue-800">Consultations</h3>
       
       <!-- Tabs -->
@@ -34,155 +34,167 @@
         <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div>
       </div>
 
-      <!-- Active Tab Content -->
-      <div v-else-if="activeTab === 'active'" class="space-y-3">
-        <div v-if="activeConsultations.length === 0" class="text-gray-500 text-center py-8 bg-gray-50 rounded-lg border border-gray-100">
-          <div class="mx-auto mb-2 flex items-center justify-center h-12 w-12 rounded-full bg-gray-100">
-            <i class="fas fa-comment-medical text-gray-400 text-xl"></i>
-          </div>
-          <p class="font-medium">No active consultations</p>
-          <p class="text-sm text-gray-400">When you start a consultation, it will appear here</p>
-          
-          <button 
-            @click="requestNewConsultation" 
-            class="mt-4 bg-blue-500 text-white py-2 px-4 rounded-lg hover:bg-blue-600 transition-all flex items-center justify-center mx-auto">
-            <font-awesome-icon icon="plus" class="mr-2" />
-            Request Consultation
-          </button>
-        </div>
-
-        <ul v-else class="space-y-3">
-          <li
-            v-for="consultation in activeConsultations"
-            :key="consultation.id"
-            class="cursor-pointer hover:bg-blue-50 p-3 rounded-lg border border-gray-200 transition-all transform hover:scale-[1.01] hover:shadow-sm"
-            :class="{ 'bg-blue-50 border-blue-300 shadow': isActiveConsultation(consultation.id) }"
-            @click="handleConsultationClick(consultation)"
-          >
-            <div class="flex justify-between items-center">
-              <div>
-                <p class="font-medium text-gray-800">{{ consultation.user_tag }}</p>
-                <div class="flex items-center mt-1">
-                  <span 
-                    :class="{
-                      'px-2 py-0.5 text-xs rounded-full flex items-center': true,
-                      'bg-yellow-100 text-yellow-800': consultation.status === 'requested',
-                      'bg-green-100 text-green-800': consultation.status === 'in_progress'
-                    }">
-                    <i v-if="consultation.status === 'requested'" class="fas fa-clock mr-1 text-xs"></i>
-                    <i v-else class="fas fa-comments mr-1 text-xs"></i>
-                    {{ formatStatus(consultation.status) }}
-                  </span>
-                  <span class="text-xs text-gray-400 ml-2">{{ formatDate(consultation.last_message_at) }}</span>
-                </div>
-              </div>
-              <div class="flex items-center">
-                <div v-if="isExpert && !consultation.doctor_id" class="bg-yellow-100 text-yellow-800 px-2 py-1 rounded-full text-xs font-medium">
-                  New
-                </div>
-                <i class="fas fa-chevron-right text-gray-400 ml-2"></i>
-              </div>
+      <!-- Tab Content Container - Flex-grow to take remaining space -->
+      <div class="flex-grow overflow-hidden">
+        <!-- Active Tab Content -->
+        <div v-if="activeTab === 'active'" class="h-full flex flex-col">
+          <div v-if="activeConsultations.length === 0" class="text-gray-500 text-center py-8 bg-gray-50 rounded-lg border border-gray-100">
+            <div class="mx-auto mb-2 flex items-center justify-center h-12 w-12 rounded-full bg-gray-100">
+              <i class="fas fa-comment-medical text-gray-400 text-xl"></i>
             </div>
-          </li>
-        </ul>
-      </div>
-
-      <!-- History Tab Content -->
-      <div v-else-if="activeTab === 'history'" class="space-y-3">
-        <div class="relative mb-3">
-          <input 
-            v-model="searchQuery" 
-            type="text" 
-            placeholder="Search history..." 
-            class="w-full p-2 pl-9 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-300 bg-gray-50"
-          >
-          <i class="fas fa-search absolute left-3 top-3 text-gray-400"></i>
-        </div>
-        
-        <div v-if="filteredHistoryConsultations.length === 0" class="text-gray-500 text-center py-8 bg-gray-50 rounded-lg">
-          <div class="mx-auto mb-2 flex items-center justify-center h-12 w-12 rounded-full bg-gray-100">
-            <i class="fas fa-history text-gray-400 text-xl"></i>
-          </div>
-          <p class="font-medium">No consultation history found</p>
-          <p class="text-sm text-gray-400">Your completed consultations will appear here</p>
-        </div>
-
-        <ul v-else class="space-y-3">
-          <li
-            v-for="consultation in filteredHistoryConsultations"
-            :key="consultation.id"
-            class="cursor-pointer hover:bg-blue-50 p-3 rounded-lg border border-gray-200 transition-all"
-            :class="{ 'bg-blue-50 border-blue-300': isActiveConsultation(consultation.id) }"
-            @click="handleConsultationClick(consultation)"
-          >
-            <div class="flex justify-between items-center">
-              <div>
-                <p class="font-medium text-gray-800">{{ consultation.user_tag }}</p>
-                <p class="text-xs text-gray-400 mt-1">{{ formatDate(consultation.last_message_at) }}</p>
-                <div v-if="consultation.rating" class="flex items-center mt-1">
-                  <span v-for="i in 5" :key="i" class="text-sm">
-                    <i v-if="i <= consultation.rating" class="fas fa-star text-yellow-500"></i>
-                    <i v-else class="far fa-star text-gray-300"></i>
-                  </span>
-                </div>
-              </div>
-              <div class="flex items-center">
-                <div v-if="consultation.follow_up_requested" class="bg-blue-100 text-blue-800 px-2 py-1 rounded-full text-xs font-medium flex items-center">
-                  <i class="fas fa-reply mr-1 text-xs"></i>
-                  Follow-up
-                </div>
-                <i class="fas fa-chevron-right text-gray-400 ml-2"></i>
-              </div>
-            </div>
-          </li>
-        </ul>
-      </div>
-
-      <!-- Follow-ups Tab Content -->
-      <div v-else-if="activeTab === 'follow-ups'" class="space-y-3">
-        <div v-if="followUpConsultations.length === 0" class="text-gray-500 text-center py-8 bg-gray-50 rounded-lg">
-          <div class="mx-auto mb-2 flex items-center justify-center h-12 w-12 rounded-full bg-gray-100">
-            <i class="fas fa-reply-all text-gray-400 text-xl"></i>
-          </div>
-          <p class="font-medium">No follow-up requests</p>
-          <p class="text-sm text-gray-400">Follow-up requests will appear here</p>
-        </div>
-
-        <ul v-else class="space-y-3">
-          <li
-            v-for="consultation in followUpConsultations"
-            :key="consultation.id"
-            class="hover:bg-blue-50 p-3 rounded-lg border border-gray-200 transition-all"
-            :class="{ 'bg-blue-50 border-blue-300': isActiveConsultation(consultation.id) }"
-          >
-            <div class="flex justify-between">
-              <p class="font-medium text-gray-800">{{ consultation.user_tag }}</p>
-              <span class="text-xs text-gray-400">{{ formatDate(consultation.follow_up_requested_at) }}</span>
-            </div>
-            <p v-if="consultation.follow_up_reason" class="text-sm text-gray-600 mt-2 p-2 bg-gray-50 rounded-lg italic">
-              "{{ consultation.follow_up_reason }}"
-            </p>
-            <div class="flex mt-3 gap-2">
-              <button 
-                @click.stop="acceptFollowUp(consultation)" 
-                class="bg-green-500 text-white px-4 py-1.5 text-sm rounded-lg hover:bg-green-600 transition-all flex-1 flex items-center justify-center">
-                <i class="fas fa-check mr-1"></i>
-                Accept
-              </button>
-              <button 
-                @click.stop="declineFollowUp(consultation)" 
-                class="bg-gray-200 text-gray-700 px-4 py-1.5 text-sm rounded-lg hover:bg-gray-300 transition-all flex-1 flex items-center justify-center">
-                <i class="fas fa-times mr-1"></i>
-                Decline
-              </button>
-            </div>
+            <p class="font-medium">No active consultations</p>
+            <p class="text-sm text-gray-400">When you start a consultation, it will appear here</p>
+            
             <button 
-              @click.stop="handleConsultationClick(consultation)" 
-              class="mt-2 text-blue-600 text-sm hover:text-blue-800 transition-all block mx-auto">
-              View consultation details
+              @click="requestNewConsultation" 
+              class="mt-4 bg-blue-500 text-white py-2 px-4 rounded-lg hover:bg-blue-600 transition-all flex items-center justify-center mx-auto">
+              <font-awesome-icon icon="plus" class="mr-2" />
+              Request Consultation
             </button>
-          </li>
-        </ul>
+          </div>
+
+          <!-- Scrollable list container -->
+          <div v-else class="overflow-y-auto h-full pr-1 custom-scrollbar">
+            <ul class="space-y-3">
+              <li
+                v-for="consultation in activeConsultations"
+                :key="consultation.id"
+                class="cursor-pointer hover:bg-blue-50 p-3 rounded-lg border border-gray-200 transition-all transform hover:scale-[1.01] hover:shadow-sm"
+                :class="{ 'bg-blue-50 border-blue-300 shadow': isActiveConsultation(consultation.id) }"
+                @click="handleConsultationClick(consultation)"
+              >
+                <div class="flex justify-between items-center">
+                  <div>
+                    <p class="font-medium text-gray-800">{{ consultation.user_tag }}</p>
+                    <div class="flex items-center mt-1">
+                      <span 
+                        :class="{
+                          'px-2 py-0.5 text-xs rounded-full flex items-center': true,
+                          'bg-yellow-100 text-yellow-800': consultation.status === 'requested',
+                          'bg-green-100 text-green-800': consultation.status === 'in_progress'
+                        }">
+                        <i v-if="consultation.status === 'requested'" class="fas fa-clock mr-1 text-xs"></i>
+                        <i v-else class="fas fa-comments mr-1 text-xs"></i>
+                        {{ formatStatus(consultation.status) }}
+                      </span>
+                      <span class="text-xs text-gray-400 ml-2">{{ formatDate(consultation.last_message_at) }}</span>
+                    </div>
+                  </div>
+                  <div class="flex items-center">
+                    <div v-if="isExpert && !consultation.doctor_id" class="bg-yellow-100 text-yellow-800 px-2 py-1 rounded-full text-xs font-medium">
+                      New
+                    </div>
+                    <i class="fas fa-chevron-right text-gray-400 ml-2"></i>
+                  </div>
+                </div>
+              </li>
+            </ul>
+          </div>
+        </div>
+
+        <!-- History Tab Content -->
+        <div v-else-if="activeTab === 'history'" class="h-full flex flex-col">
+          <div class="relative mb-3 flex-shrink-0">
+            <input 
+              v-model="searchQuery" 
+              type="text" 
+              placeholder="Search history..." 
+              class="w-full p-2 pl-9 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-300 bg-gray-50"
+            >
+            <i class="fas fa-search absolute left-3 top-3 text-gray-400"></i>
+          </div>
+          
+          <div v-if="filteredHistoryConsultations.length === 0" class="text-gray-500 text-center py-8 bg-gray-50 rounded-lg">
+            <div class="mx-auto mb-2 flex items-center justify-center h-12 w-12 rounded-full bg-gray-100">
+              <i class="fas fa-history text-gray-400 text-xl"></i>
+            </div>
+            <p class="font-medium">No consultation history found</p>
+            <p class="text-sm text-gray-400">Your completed consultations will appear here</p>
+          </div>
+
+          <!-- Scrollable list container -->
+          <div v-else class="overflow-y-auto h-full pr-1 custom-scrollbar">
+            <ul class="space-y-3">
+              <li
+                v-for="consultation in filteredHistoryConsultations"
+                :key="consultation.id"
+                class="cursor-pointer hover:bg-blue-50 p-3 rounded-lg border border-gray-200 transition-all"
+                :class="{ 'bg-blue-50 border-blue-300': isActiveConsultation(consultation.id) }"
+                @click="handleConsultationClick(consultation)"
+              >
+                <div class="flex justify-between items-center">
+                  <div>
+                    <p class="font-medium text-gray-800">{{ consultation.user_tag }}</p>
+                    <p class="text-xs text-gray-400 mt-1">{{ formatDate(consultation.last_message_at) }}</p>
+                    <div v-if="consultation.rating" class="flex items-center mt-1">
+                      <span v-for="i in 5" :key="i" class="text-sm">
+                        <i v-if="i <= consultation.rating" class="fas fa-star text-yellow-500"></i>
+                        <i v-else class="far fa-star text-gray-300"></i>
+                      </span>
+                    </div>
+                  </div>
+                  <div class="flex items-center">
+                    <div v-if="consultation.follow_up_requested" class="bg-blue-100 text-blue-800 px-2 py-1 rounded-full text-xs font-medium flex items-center">
+                      <i class="fas fa-reply mr-1 text-xs"></i>
+                      Follow-up
+                    </div>
+                    <i class="fas fa-chevron-right text-gray-400 ml-2"></i>
+                  </div>
+                </div>
+              </li>
+            </ul>
+          </div>
+        </div>
+
+        <!-- Follow-ups Tab Content -->
+        <div v-else-if="activeTab === 'follow-ups'" class="h-full">
+          <div v-if="followUpConsultations.length === 0" class="text-gray-500 text-center py-8 bg-gray-50 rounded-lg">
+            <div class="mx-auto mb-2 flex items-center justify-center h-12 w-12 rounded-full bg-gray-100">
+              <i class="fas fa-reply-all text-gray-400 text-xl"></i>
+            </div>
+            <p class="font-medium">No follow-up requests</p>
+            <p class="text-sm text-gray-400">Follow-up requests will appear here</p>
+          </div>
+
+          <!-- Scrollable list container -->
+          <div v-else class="overflow-y-auto h-full pr-1 custom-scrollbar">
+            <ul class="space-y-3">
+              <li
+                v-for="consultation in followUpConsultations"
+                :key="consultation.id"
+                class="hover:bg-blue-50 p-3 rounded-lg border border-gray-200 transition-all"
+                :class="{ 'bg-blue-50 border-blue-300': isActiveConsultation(consultation.id) }"
+              >
+                <div class="flex justify-between">
+                  <p class="font-medium text-gray-800">{{ consultation.user_tag }}</p>
+                  <span class="text-xs text-gray-400">{{ formatDate(consultation.follow_up_requested_at) }}</span>
+                </div>
+                <p v-if="consultation.follow_up_reason" class="text-sm text-gray-600 mt-2 p-2 bg-gray-50 rounded-lg italic">
+                  "{{ consultation.follow_up_reason }}"
+                </p>
+                <div class="flex mt-3 gap-2">
+                  <button 
+                    @click.stop="acceptFollowUp(consultation)" 
+                    class="bg-green-500 text-white px-4 py-1.5 text-sm rounded-lg hover:bg-green-600 transition-all flex-1 flex items-center justify-center">
+                    <i class="fas fa-check mr-1"></i>
+                    Accept
+                  </button>
+                  <button 
+                    @click.stop="declineFollowUp(consultation)" 
+                    class="bg-gray-200 text-gray-700 px-4 py-1.5 text-sm rounded-lg hover:bg-gray-300 transition-all flex-1 flex items-center justify-center">
+                    <i class="fas fa-times mr-1"></i>
+                    Decline
+                  </button>
+                </div>
+                <button 
+                  @click.stop="handleConsultationClick(consultation)" 
+                  class="mt-2 text-blue-600 text-sm hover:text-blue-800 transition-all block mx-auto">
+                  View consultation details
+                </button>
+              </li>
+            </ul>
+          </div>
+        </div>
       </div>
     </div>
 
@@ -242,36 +254,6 @@ const currentConsultation = ref(null);
 // User data
 const user = computed(() => authStore.user);
 const isExpert = computed(() => user.value?.role === 'health_expert');
-
-// Computed properties
-const activeConsultations = computed(() => {
-  if (isExpert.value) {
-    return expertConsultations.value.filter(c => 
-      c.status === 'in_progress' || c.status === 'requested'
-    );
-  }
-  return [currentConsultation.value].filter(Boolean);
-});
-
-const historyConsultations = computed(() => 
-  consultationHistory.value.filter(c => c.status === 'completed')
-);
-
-const filteredHistoryConsultations = computed(() => {
-  if (!searchQuery.value) return historyConsultations.value;
-  
-  const query = searchQuery.value.toLowerCase();
-  return historyConsultations.value.filter(c => 
-    c.user_tag?.toLowerCase().includes(query) || 
-    c.messages?.some(m => m.message?.toLowerCase().includes(query))
-  );
-});
-
-const followUpConsultations = computed(() => 
-  consultationHistory.value.filter(c => c.follow_up_requested)
-);
-
-const followUpCount = computed(() => followUpConsultations.value.length);
 
 // Lifecycle hooks
 onMounted(async () => {
@@ -454,4 +436,59 @@ const declineFollowUp = async (consultation) => {
     }
   });
 };
+
+// Computed properties
+const activeConsultations = computed(() => {
+  if (!isExpert.value) {
+    return [currentConsultation.value].filter(Boolean);
+  }
+  return expertConsultations.value.filter(c => 
+    c.status === 'in_progress' || c.status === 'requested'
+  );
+});
+
+const historyConsultations = computed(() => 
+  consultationHistory.value.filter(c => c.status === 'completed')
+);
+
+const filteredHistoryConsultations = computed(() => {
+  if (!searchQuery.value) return historyConsultations.value;
+  
+  const query = searchQuery.value.toLowerCase();
+  return historyConsultations.value.filter(c => 
+    c.user_tag?.toLowerCase().includes(query) || 
+    c.messages?.some(m => m.message?.toLowerCase().includes(query))
+  );
+});
+
+const followUpConsultations = computed(() => 
+  consultationHistory.value.filter(c => c.follow_up_requested)
+);
+
+const followUpCount = computed(() => followUpConsultations.value.length);
 </script>
+
+<style scoped>
+.custom-scrollbar {
+  scrollbar-width: thin;
+  scrollbar-color: #cbd5e0 #f7fafc;
+}
+
+.custom-scrollbar::-webkit-scrollbar {
+  width: 6px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: #f7fafc;
+  border-radius: 8px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background-color: #cbd5e0;
+  border-radius: 8px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background-color: #a0aec0;
+}
+</style>
