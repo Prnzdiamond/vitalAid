@@ -176,6 +176,19 @@ export const useAuthStore = defineStore("auth", {
                 // Reinitialize Echo with an empty token (or nullify it)
                 initEcho(""); // Reinitialize Echo without a token to disconnect
             } catch (error) {
+                this.$patch({
+                    token: "",
+                    user: null,
+                    loggedIn: false,
+                    verificationStatus: null,
+                });
+
+                localStorage.removeItem("loginState");
+                localStorage.removeItem("token");
+                localStorage.removeItem("user");
+
+                initEcho(""); // Reinitialize Echo without a token to disconnect
+
                 console.error("Logout failed:", error);
                 const { $toast } = useNuxtApp();
                 $toast.error(error.data?.message || "Logout failed");
