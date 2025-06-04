@@ -68,14 +68,12 @@ onMounted(async () => {
 
 authstore.restoreSession();
 
-
-
-if (!authstore.isAuthenticated) {
+  if (!authstore.isAuthenticated) {
     await router.push('/login');
     return;
   }
 
-  
+
 await authstore.fetchUser();
 
 if (authstore.user) {

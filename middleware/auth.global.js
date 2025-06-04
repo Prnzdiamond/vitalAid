@@ -4,6 +4,10 @@ export default defineNuxtRouteMiddleware((to, from) => {
     // Define public routes that don't require authentication
     const publicRoutes = ['/login', '/register', '/']
     
+    if (!authStore.isAuthenticated) {
+        console.log("User not authenticated, redirecting to login");
+      return navigateTo('/login')
+    }
     // Restore session first if on client side
     if (process.client) {
       authStore.restoreSession()
@@ -15,8 +19,4 @@ export default defineNuxtRouteMiddleware((to, from) => {
     }
     
     // Check if user is authenticated for protected routes
-    if (!authStore.isAuthenticated) {
-        console.log("User not authenticated, redirecting to login")
-      return navigateTo('/login')
-    }
   })
