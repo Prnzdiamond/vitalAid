@@ -1,6 +1,12 @@
+
 <template>
-  <div class="fixed inset-0 flex justify-center items-center bg-gray-800 bg-opacity-70 z-50">
-    <div class="bg-white p-8 rounded-lg w-full max-w-md shadow-xl">
+  <div class="fixed inset-0 flex items-center justify-center z-50 p-4">
+    <!-- Enhanced Backdrop -->
+    <div 
+      class="absolute inset-0 bg-black/30 backdrop-blur-sm" 
+      @click="handleClose"
+    />
+    <div class="bg-white p-8 rounded-2xl w-full max-w-md shadow-2xl relative border border-gray-200">
       <div class="flex justify-between items-center mb-6">
         <h2 class="text-2xl font-bold text-green-700">Make a Donation</h2>
         <button

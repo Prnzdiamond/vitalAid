@@ -1,16 +1,19 @@
 <template>
-  <div class="flex h-[calc(100vh-64px)]">
+  <div class="h-[calc(100vh-200px)] flex rounded-xl overflow-hidden bg-white/60 backdrop-blur-sm shadow-lg border border-white/20">
     <!-- Left side: Consultations List -->
-    <div class="flex-1 min-w-[300px] max-w-[400px] flex flex-col p-4 border-r border-gray-200 bg-white shadow-sm">
+    <div class="flex-1 min-w-[300px] max-w-[400px] flex flex-col p-4 border-r border-gray-200/50 bg-white/40">
       <h3 class="text-xl font-semibold mb-4 text-blue-800">Consultations</h3>
       
       <!-- Tabs -->
-      <div class="mb-4 border-b border-gray-200 flex">
+      <div class="mb-4 border-b border-gray-200/50 flex">
         <button 
           @click="activeTab = 'active'" 
           class="mr-4 pb-2 font-medium transition-colors" 
           :class="activeTab === 'active' ? 'text-blue-800 border-b-2 border-blue-800 font-semibold' : 'text-gray-500 hover:text-blue-800'">
           Active
+          <span v-if="totalUnreadCount > 0" class="ml-1 px-2 py-1 text-xs bg-red-500 text-white rounded-full">
+            {{ totalUnreadCount }}
+          </span>
         </button>
         <button 
           @click="activeTab = 'history'" 
@@ -38,8 +41,8 @@
       <div class="flex-grow overflow-hidden">
         <!-- Active Tab Content -->
         <div v-if="activeTab === 'active'" class="h-full flex flex-col">
-          <div v-if="activeConsultations.length === 0" class="text-gray-500 text-center py-8 bg-gray-50 rounded-lg border border-gray-100">
-            <div class="mx-auto mb-2 flex items-center justify-center h-12 w-12 rounded-full bg-gray-100">
+          <div v-if="activeConsultations.length === 0" class="text-gray-500 text-center py-8 bg-gray-50/50 rounded-lg border border-gray-100/50">
+            <div class="mx-auto mb-2 flex items-center justify-center h-12 w-12 rounded-full bg-gray-100/50">
               <i class="fas fa-comment-medical text-gray-400 text-xl"></i>
             </div>
             <p class="font-medium">No active consultations</p>
@@ -59,13 +62,24 @@
               <li
                 v-for="consultation in activeConsultations"
                 :key="consultation.id"
-                class="cursor-pointer hover:bg-blue-50 p-3 rounded-lg border border-gray-200 transition-all transform hover:scale-[1.01] hover:shadow-sm"
-                :class="{ 'bg-blue-50 border-blue-300 shadow': isActiveConsultation(consultation.id) }"
+                class="cursor-pointer hover:bg-blue-50/50 p-3 rounded-lg border border-gray-200/50 transition-all transform hover:scale-[1.01] hover:shadow-sm relative"
+                :class="{ 'bg-blue-50/50 border-blue-300/50 shadow': isActiveConsultation(consultation.id) }"
                 @click="handleConsultationClick(consultation)"
               >
+                <!-- Unread Message Badge -->
+                <div v-if="getUnreadCount(consultation.id) > 0 && !isActiveConsultation(consultation.id)" 
+                     class="absolute -top-1 -right-1 w-6 h-6 bg-red-500 rounded-full flex items-center justify-center animate-pulse z-10">
+                  <span class="text-xs text-white font-bold">{{ getUnreadCount(consultation.id) }}</span>
+                </div>
+
                 <div class="flex justify-between items-center">
-                  <div>
-                    <p class="font-medium text-gray-800">{{ consultation.user_tag }}</p>
+                  <div class="flex-1">
+                    <div class="flex items-center">
+                      <p class="font-medium text-gray-800">{{ consultation.user_tag }}</p>
+                      <!-- New message indicator dot -->
+                      <div v-if="getUnreadCount(consultation.id) > 0 && !isActiveConsultation(consultation.id)" 
+                           class="ml-2 w-2 h-2 bg-red-500 rounded-full animate-pulse"></div>
+                    </div>
                     <div class="flex items-center mt-1">
                       <span 
                         :class="{
@@ -81,10 +95,10 @@
                     </div>
                   </div>
                   <div class="flex items-center">
-                    <div v-if="isExpert && !consultation.doctor_id" class="bg-yellow-100 text-yellow-800 px-2 py-1 rounded-full text-xs font-medium">
+                    <div v-if="isExpert && !consultation.doctor_id" class="bg-yellow-100 text-yellow-800 px-2 py-1 rounded-full text-xs font-medium mr-2">
                       New
                     </div>
-                    <i class="fas fa-chevron-right text-gray-400 ml-2"></i>
+                    <i class="fas fa-chevron-right text-gray-400"></i>
                   </div>
                 </div>
               </li>
@@ -99,13 +113,13 @@
               v-model="searchQuery" 
               type="text" 
               placeholder="Search history..." 
-              class="w-full p-2 pl-9 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-300 bg-gray-50"
+              class="w-full p-2 pl-9 border border-gray-200/50 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-300 bg-gray-50/50"
             >
             <i class="fas fa-search absolute left-3 top-3 text-gray-400"></i>
           </div>
           
-          <div v-if="filteredHistoryConsultations.length === 0" class="text-gray-500 text-center py-8 bg-gray-50 rounded-lg">
-            <div class="mx-auto mb-2 flex items-center justify-center h-12 w-12 rounded-full bg-gray-100">
+          <div v-if="filteredHistoryConsultations.length === 0" class="text-gray-500 text-center py-8 bg-gray-50/50 rounded-lg">
+            <div class="mx-auto mb-2 flex items-center justify-center h-12 w-12 rounded-full bg-gray-100/50">
               <i class="fas fa-history text-gray-400 text-xl"></i>
             </div>
             <p class="font-medium">No consultation history found</p>
@@ -118,8 +132,8 @@
               <li
                 v-for="consultation in filteredHistoryConsultations"
                 :key="consultation.id"
-                class="cursor-pointer hover:bg-blue-50 p-3 rounded-lg border border-gray-200 transition-all"
-                :class="{ 'bg-blue-50 border-blue-300': isActiveConsultation(consultation.id) }"
+                class="cursor-pointer hover:bg-blue-50/50 p-3 rounded-lg border border-gray-200/50 transition-all"
+                :class="{ 'bg-blue-50/50 border-blue-300/50': isActiveConsultation(consultation.id) }"
                 @click="handleConsultationClick(consultation)"
               >
                 <div class="flex justify-between items-center">
@@ -148,8 +162,8 @@
 
         <!-- Follow-ups Tab Content -->
         <div v-else-if="activeTab === 'follow-ups'" class="h-full">
-          <div v-if="followUpConsultations.length === 0" class="text-gray-500 text-center py-8 bg-gray-50 rounded-lg">
-            <div class="mx-auto mb-2 flex items-center justify-center h-12 w-12 rounded-full bg-gray-100">
+          <div v-if="followUpConsultations.length === 0" class="text-gray-500 text-center py-8 bg-gray-50/50 rounded-lg">
+            <div class="mx-auto mb-2 flex items-center justify-center h-12 w-12 rounded-full bg-gray-100/50">
               <i class="fas fa-reply-all text-gray-400 text-xl"></i>
             </div>
             <p class="font-medium">No follow-up requests</p>
@@ -162,14 +176,14 @@
               <li
                 v-for="consultation in followUpConsultations"
                 :key="consultation.id"
-                class="hover:bg-blue-50 p-3 rounded-lg border border-gray-200 transition-all"
-                :class="{ 'bg-blue-50 border-blue-300': isActiveConsultation(consultation.id) }"
+                class="hover:bg-blue-50/50 p-3 rounded-lg border border-gray-200/50 transition-all"
+                :class="{ 'bg-blue-50/50 border-blue-300/50': isActiveConsultation(consultation.id) }"
               >
                 <div class="flex justify-between">
                   <p class="font-medium text-gray-800">{{ consultation.user_tag }}</p>
                   <span class="text-xs text-gray-400">{{ formatDate(consultation.follow_up_requested_at) }}</span>
                 </div>
-                <p v-if="consultation.follow_up_reason" class="text-sm text-gray-600 mt-2 p-2 bg-gray-50 rounded-lg italic">
+                <p v-if="consultation.follow_up_reason" class="text-sm text-gray-600 mt-2 p-2 bg-gray-50/50 rounded-lg italic">
                   "{{ consultation.follow_up_reason }}"
                 </p>
                 <div class="flex mt-3 gap-2">
@@ -199,9 +213,10 @@
     </div>
 
     <!-- Right side: Active Consultation (Chatbox) -->
-    <div class="flex-[3] flex flex-col h-full overflow-hidden bg-gray-50">
+    <div class="flex-[3] flex flex-col h-full overflow-hidden bg-gray-50/30">
       <div v-if="selectedConsultation" class="h-full flex-1 overflow-hidden">
         <Chatbox 
+          ref="chatboxRef"
           :consultation-id="selectedConsultation.id" 
           :consultation="selectedConsultation"
           :is-completed="selectedConsultation.status === 'completed'" 
@@ -209,7 +224,7 @@
         />
       </div>
       <div v-else class="flex items-center justify-center h-full text-gray-500">
-        <div class="text-center p-6 bg-white rounded-lg shadow-sm max-w-md">
+        <div class="text-center p-6 bg-white/50 backdrop-blur-sm rounded-lg shadow-sm max-w-md">
           <div class="mx-auto mb-4 flex items-center justify-center h-16 w-16 rounded-full bg-blue-50">
             <i class="fas fa-comment-dots text-blue-500 text-2xl"></i>
           </div>
@@ -230,7 +245,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, watch, onBeforeUnmount } from "vue";
+import { ref, computed, onMounted, watch, onBeforeUnmount, nextTick } from "vue";
 import { useConsultationStore } from "@/stores/consultationStore";
 import { useAuthStore } from "~/stores/authStore";
 import { useMessageStore } from "~/stores/messageStore";
@@ -250,20 +265,36 @@ const isLoading = ref(false);
 const expertConsultations = ref([]);
 const consultationHistory = ref([]);
 const currentConsultation = ref(null);
+const chatboxRef = ref(null);
 
 // User data
 const user = computed(() => authStore.user);
 const isExpert = computed(() => user.value?.role === 'health_expert');
+
+// Unread message tracking
+const getUnreadCount = (consultationId) => {
+  return messageStore.getUnreadCount(consultationId);
+};
+
+const totalUnreadCount = computed(() => {
+  return activeConsultations.value.reduce((total, consultation) => {
+    return total + getUnreadCount(consultation.id);
+  }, 0);
+});
 
 // Lifecycle hooks
 onMounted(async () => {
   await authStore.fetchUser();
   await loadConsultations();
   document.addEventListener('consultation:updated', handleConsultationUpdate);
+  
+  // Listen for new messages to update unread counts
+  document.addEventListener('message:received', handleNewMessage);
 });
 
 onBeforeUnmount(() => {
   document.removeEventListener('consultation:updated', handleConsultationUpdate);
+  document.removeEventListener('message:received', handleNewMessage);
 });
 
 // Watch for active tab changes
@@ -271,8 +302,36 @@ watch(activeTab, () => {
   if (activeTab.value === 'follow-ups') loadConsultations();
 });
 
+// Watch for selected consultation changes to mark as read
+watch(selectedConsultation, (newConsultation, oldConsultation) => {
+  if (newConsultation && newConsultation.id !== oldConsultation?.id) {
+    nextTick(() => {
+      // Mark messages as read when selecting a consultation
+      messageStore.markAsRead(newConsultation.id);
+      
+      // Also call the chatbox method if available
+      if (chatboxRef.value?.markMessagesAsRead) {
+        chatboxRef.value.markMessagesAsRead();
+      }
+    });
+  }
+});
+
 // Methods
-async function loadConsultations() {
+const handleNewMessage = (event) => {
+  const { consultationId } = event.detail;
+  
+  // Only mark as unread if the consultation is not currently selected
+  if (!selectedConsultation.value || selectedConsultation.value.id !== consultationId) {
+    // The messageStore already handles marking as unread in its listener
+    // We just need to ensure the UI updates
+    nextTick(() => {
+      // Force reactivity update if needed
+    });
+  }
+};
+
+const loadConsultations = async () => {
   isLoading.value = true;
   try {
     if (isExpert.value) {
@@ -286,12 +345,17 @@ async function loadConsultations() {
       }
     }
     consultationHistory.value = await consultationStore.fetchConsultationHistory();
+    
+    // Set up message listeners for all active consultations
+    activeConsultations.value.forEach(consultation => {
+      messageStore.listenForMessages(consultation.id);
+    });
   } catch (error) {
     console.error("Failed to load consultations:", error);
   } finally {
     isLoading.value = false;
   }
-}
+};
 
 const formatStatus = (status) => ({
   'in_progress': 'In Progress',
@@ -322,14 +386,19 @@ const handleConsultationClick = async (consultation) => {
         await messageStore.fetchMessages(updatedConsultation.id);
       }
       messageStore.listenForMessages(updatedConsultation.id);
+      
+      // Mark messages as read when selecting
+      messageStore.markAsRead(updatedConsultation.id);
     } else {
       selectedConsultation.value = consultation;
       consultationStore.setActiveConsultation(consultation.id);
+      messageStore.markAsRead(consultation.id);
     }
   } catch (error) {
     console.error("Error fetching consultation details:", error);
     selectedConsultation.value = consultation;
     consultationStore.setActiveConsultation(consultation.id);
+    messageStore.markAsRead(consultation.id);
   } finally {
     isLoading.value = false;
   }
@@ -416,6 +485,7 @@ const declineFollowUp = async (consultation) => {
     if (result.isConfirmed) {
       try {
         isLoading.value = true;
+        await consultationStore.declineFollowUp(consultation.id);
         await loadConsultations();
         
         swal.fire({

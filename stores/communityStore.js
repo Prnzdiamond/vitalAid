@@ -4,33 +4,39 @@ import { useToken } from "@/composables/useToken";
 
 export const useCommunityStore = defineStore("community", {
     state: () => ({
-        // Maintain minimal state for UI reactivity when needed
-        userCommunities: [], // Communities the user has joined
-        communityMembers: {}, // Store members by community ID
+        userCommunities: [],
+        communityMembers: {},
     }),
 
     actions: {
-        // Fetch all communities (Public)
-        async fetchCommunities(params = {}) {
+        // Helper for API calls
+        async apiCall(endpoint, method = "GET", body = null) {
             const config = useRuntimeConfig();
-            try {
-                // Build query string for pagination and filtering
-                const queryParams = new URLSearchParams();
-                for (const [key, value] of Object.entries(params)) {
-                    if (value !== null && value !== undefined && value !== '') {
-                        queryParams.append(key, value);
-                    }
+            return await $fetch(endpoint, {
+                method,
+                headers: { 'Authorization': `Bearer ${useToken().get()}` },
+                baseURL: config.public.apiBase,
+                ...(body && { body })
+            });
+        },
+
+        // Build query params helper
+        buildQuery(params) {
+            const queryParams = new URLSearchParams();
+            Object.entries(params).forEach(([key, value]) => {
+                if (value !== null && value !== undefined && value !== '') {
+                    queryParams.append(key, value);
                 }
+            });
+            return queryParams.toString();
+        },
 
-                const queryString = queryParams.toString();
-                const url = queryString ? `/community/list?${queryString}` : '/community/list';
-
-                const response = await $fetch(url, {
-                    method: "GET",
-                    headers: { 'Authorization': `Bearer ${useToken().get()}` },
-                    baseURL: config.public.apiBase,
-                });
-
+        // Fetch communities with optional params
+        async fetchCommunities(params = {}) {
+            try {
+                const query = this.buildQuery(params);
+                const url = query ? `/community/list?${query}` : '/community/list';
+                const response = await this.apiCall(url);
                 return {
                     communities: response.data.communities || [],
                     pagination: response.data.pagination || null
@@ -41,68 +47,28 @@ export const useCommunityStore = defineStore("community", {
             }
         },
 
-        // Search communities with specific criteria
+        // Search communities (uses same endpoint as fetch)
         async searchCommunities(searchParams = {}) {
-            const config = useRuntimeConfig();
-            try {
-                // Build query string
-                const queryParams = new URLSearchParams();
-                for (const [key, value] of Object.entries(searchParams)) {
-                    if (value !== null && value !== undefined && value !== '') {
-                        queryParams.append(key, value);
-                    }
-                }
-
-                const queryString = queryParams.toString();
-                const url = `/community/list?${queryString}`;
-
-                const response = await $fetch(url, {
-                    method: "GET",
-                    headers: { 'Authorization': `Bearer ${useToken().get()}` },
-                    baseURL: config.public.apiBase,
-                });
-
-                return {
-                    communities: response.data.communities || [],
-                    pagination: response.data.pagination || null
-                };
-            } catch (error) {
-                console.error("Error searching communities:", error);
-                throw error;
-            }
+            return this.fetchCommunities(searchParams);
         },
 
-        // Fetch a community (Public)
+        // Fetch single community
         async fetchCommunity(communityId) {
-            const config = useRuntimeConfig();
             try {
-                const response = await $fetch(`/community/${communityId}`, {
-                    method: "GET",
-                    headers: { 'Authorization': `Bearer ${useToken().get()}` },
-                    baseURL: config.public.apiBase,
-                });
-                console.log(response)
+                const response = await this.apiCall(`/community/${communityId}`);
+                console.log(response);
                 return response.data;
-
             } catch (error) {
                 console.error("Error fetching community:", error);
                 throw error;
             }
         },
 
-        // Join a community (Authenticated users)
+        // Join community
         async joinCommunity(communityId) {
-            const config = useRuntimeConfig();
             try {
-                const response = await $fetch(`/community/${communityId}/join`, {
-                    method: "POST",
-                    headers: { 'Authorization': `Bearer ${useToken().get()}` },
-                    baseURL: config.public.apiBase,
-                });
-
-                // Refresh user communities after joining
+                const response = await this.apiCall(`/community/${communityId}/join`, "POST");
                 await this.fetchUserCommunities();
-
                 return response.data;
             } catch (error) {
                 console.error("Error joining community:", error);
@@ -110,19 +76,11 @@ export const useCommunityStore = defineStore("community", {
             }
         },
 
-        // Leave a community (Authenticated users)
+        // Leave community
         async leaveCommunity(communityId) {
-            const config = useRuntimeConfig();
             try {
-                const response = await $fetch(`/community/${communityId}/leave`, {
-                    method: "POST",
-                    headers: { 'Authorization': `Bearer ${useToken().get()}` },
-                    baseURL: config.public.apiBase,
-                });
-
-                // Update local state after leaving
-                this.userCommunities = this.userCommunities.filter(community => community.id !== communityId);
-
+                const response = await this.apiCall(`/community/${communityId}/leave`, "POST");
+                this.userCommunities = this.userCommunities.filter(c => c.id !== communityId);
                 return response.data;
             } catch (error) {
                 console.error("Error leaving community:", error);
@@ -130,16 +88,10 @@ export const useCommunityStore = defineStore("community", {
             }
         },
 
-        // Fetch user's communities (communities the user has joined)
+        // Fetch user's communities
         async fetchUserCommunities() {
-            const config = useRuntimeConfig();
             try {
-                const response = await $fetch("/community/my/list", {
-                    method: "GET",
-                    headers: { 'Authorization': `Bearer ${useToken().get()}` },
-                    baseURL: config.public.apiBase,
-                });
-
+                const response = await this.apiCall("/community/my/list");
                 this.userCommunities = response.data.communities || [];
                 return this.userCommunities;
             } catch (error) {
@@ -150,17 +102,9 @@ export const useCommunityStore = defineStore("community", {
 
         // Get community members
         async getCommunityMembers(communityId) {
-            const config = useRuntimeConfig();
             try {
-                const response = await $fetch(`/community/${communityId}/members`, {
-                    method: "GET",
-                    headers: { 'Authorization': `Bearer ${useToken().get()}` },
-                    baseURL: config.public.apiBase,
-                });
-
-                // Store in state for reactivity if needed
+                const response = await this.apiCall(`/community/${communityId}/members`);
                 this.communityMembers[communityId] = response.data.members || [];
-
                 return {
                     members: response.data.members || [],
                     pagination: response.data.pagination || null
@@ -171,16 +115,10 @@ export const useCommunityStore = defineStore("community", {
             }
         },
 
-        // Notify community members (for community admins only)
+        // Notify community members
         async notifyCommunityMembers(notificationData) {
-            const config = useRuntimeConfig();
             try {
-                const response = await $fetch(`/community/notify-members`, {
-                    method: "POST",
-                    headers: { 'Authorization': `Bearer ${useToken().get()}` },
-                    body: notificationData,
-                    baseURL: config.public.apiBase,
-                });
+                const response = await this.apiCall(`/community/notify-members`, "POST", notificationData);
                 return response.data;
             } catch (error) {
                 console.error("Error notifying community members:", error);
@@ -188,4 +126,4 @@ export const useCommunityStore = defineStore("community", {
             }
         }
     },
-}); 
+});

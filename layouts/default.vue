@@ -1,187 +1,172 @@
 <template>
-  <div class="min-h-screen flex flex-col bg-gray-100">
-    <!-- Global Header -->
-    <HeaderComponent :user="user" />
+  <div class="min-h-screen bg-gradient-to-br from-green-50 via-blue-50 to-white flex flex-col">
+    <!-- Enhanced Header -->
+    <HeaderComponent 
+      :user="user" 
+      :navigation-items="navigationItems"
+      @toggle-mobile-menu="mobileMenuOpen = true" 
+    />
+    
+    <!-- Mobile Navigation Overlay -->
+    <MobileNavigation 
+      v-model:open="mobileMenuOpen" 
+      :user="user" 
+      :navigation-items="navigationItems" 
+    />
 
-    <div class="flex flex-1">
-      <!-- Sidebar -->
-      <aside
-        :class="[
-          'bg-white p-6 shadow-lg transition-transform duration-300',
-          sidebarOpen ? 'translate-x-0' : '-translate-x-full',
-          'fixed md:relative z-30 w-64 h-full md:translate-x-0'
-        ]"
-      >
-        <button
-          class="absolute top-4 right-4 text-gray-500 md:hidden"
-          @click="sidebarOpen = false"
-        >
-          ✖
-        </button>
-        <h2 class="text-lg font-semibold text-gray-700 mb-4">
-          Welcome, {{ user._tag }}
-          <span class="text-xs bg-green-100 text-green-700 px-2 py-1 rounded ml-1">{{ user.role }}</span>
-        </h2>
-        <ul class="space-y-4">
-          <li><NuxtLink to="/events" class="dashboard-link">📅 Events</NuxtLink></li>
-          <li><NuxtLink to="/my-events/joined" class="dashboard-link">📌 Joined Events</NuxtLink></li>
-          <li><NuxtLink to="/my-events/created" class="dashboard-link">🛠️ Created Events</NuxtLink></li>
-          <li><NuxtLink to="/donate" class="dashboard-link">💰 Donate</NuxtLink></li>
-          <li><NuxtLink to="/community" class="dashboard-link">💰 Community</NuxtLink></li>
-          <li><NuxtLink to="/community/my-communities" class="dashboard-link">💰 Community</NuxtLink></li>
-          <li><NuxtLink to="/consultations" class="dashboard-link">📋 Consultations</NuxtLink></li>
-          <li><NuxtLink to="/donate/my_request" class="dashboard-link">📋 My donate requests</NuxtLink></li>
-          <li><NuxtLink to="/profile" class="dashboard-link">👤 Profile</NuxtLink></li>
-        </ul>
-      </aside>
+    <!-- Main Content Container -->
+    <div class="flex-1 flex flex-col">
+      <!-- Quick Actions Section - Only show if user has role-specific actions -->
+      <section v-if="roleSpecificActions && roleSpecificActions.length > 0" class=" px-4 sm:px-6 lg:px-8 pt-3">
+        <QuickActions 
+          :actions="roleSpecificActions"
+          :is-verified="isVerified"
+          @navigate="handleNavigation"
+        />
+      </section>
 
-      <!-- Main Content -->
-      <main class="flex-1 p-4 md:p-8">
-        <button class="md:hidden mb-4 text-blue-600 font-bold" @click="sidebarOpen = !sidebarOpen">☰ Menu</button>
-        
-        <slot />
+      <!-- Page Content Area -->
+      <main class="flex-1 px-4 sm:px-6 lg:px-8 pb-8" :class="roleSpecificActions && roleSpecificActions.length > 0 ? 'pt-2' : 'pt-8'">
+        <div class="bg-white/80 backdrop-blur-sm rounded-2xl shadow-lg border border-white/20 min-h-[500px] p-6 ">
+          <slot />
+        </div>
       </main>
     </div>
 
-    <!-- Global Footer -->
+    <!-- Enhanced Footer -->
     <FooterComponent />
 
     <!-- Floating Chat Button -->
-    <button
-      @click="toggleChat"
-      class="fixed bottom-6 right-6 bg-blue-600 text-white px-5 py-3 rounded-full shadow-lg hover:bg-blue-700 transition z-50"
-    >
-      💬 Chat
-    </button>
+    <FloatingChatButton 
+      :has-unread-messages="hasUnreadMessages"
+      @toggle="toggleChat"
+    />
 
     <!-- Chat Popup -->
-    <Teleport to="body">
-      <div v-if="messageStore.showChat" class="fixed inset-0 flex items-center justify-center z-50">
-        <!-- Overlay -->
-        <div class="absolute inset-0 bg-black opacity-50 z-40" @click="toggleChat"></div>
-
-        <!-- Chatbox with larger width -->
-        <div class="bg-white w-11/12 md:w-1/2 max-w-4xl rounded-lg shadow-lg relative z-50">
-          <!-- Loading state -->
-          <div v-if="loadingPopupConsultation" class="p-6 flex flex-col items-center justify-center h-[70vh]">
-            <div class="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500 mb-4"></div>
-            <p class="text-gray-500">Loading your consultation...</p>
-          </div>
-          
-          <!-- Close Button -->
-          <button @click="toggleChat" class="absolute top-2 right-2 text-gray-500 hover:text-red-500 text-xl z-10">
-            <i class="fas fa-times"></i>
-          </button>
-          
-          <!-- Chatbox content -->
-          <Chatbox 
-            v-if="!loadingPopupConsultation"
-            :key="`popup-chat-${popupConsultationId || 'new'}`"
-            :consultationId="popupConsultationId" 
-            :consultation="popupConsultationData"
-          />
-        </div>
-      </div>
-    </Teleport>
+    <ChatPopup 
+      v-model:show="messageStore.showChat"
+      :consultation-id="popupConsultationId"
+      :consultation-data="popupConsultationData"
+      :loading="loadingPopupConsultation"
+      @close="toggleChat"
+    />
   </div>
 </template>
 
 <script setup>
-import { onMounted, ref, watch, onBeforeUnmount } from "vue";
-import HeaderComponent from "@/components/HeaderComponent.vue";
-import FooterComponent from "@/components/FooterComponent.vue";
-import Chatbox from "@/components/Chatbox.vue";
+import { onMounted, ref, computed, onBeforeUnmount } from "vue";
+import { useRouter } from 'vue-router';
 import { useAuthStore } from "~/stores/authStore";
 import { useEchoStore } from "~/stores/echoStore";
 import { useMessageStore } from "~/stores/messageStore";
 import { useConsultationStore } from "~/stores/consultationStore";
 
+// Import components
+import HeaderComponent from "@/components/HeaderComponent.vue";
+import FooterComponent from "@/components/FooterComponent.vue";
+import MobileNavigation from "@/components/layout/MobileNavigation.vue";
+import QuickActions from "@/components/layout/QuickActions.vue";
+import FloatingChatButton from "@/components/layout/FloatingChatButton.vue";
+import ChatPopup from "@/components/layout/ChatPopup.vue";
+
+// Import navigation data
+import { navigationItems, useRoleSpecificActions } from "~/composables/useNavigation";
+
+// Store instances
 const authstore = useAuthStore();
 const echostore = useEchoStore();
 const messageStore = useMessageStore();
 const consultationStore = useConsultationStore();
+const router = useRouter();
 
-// Separate states for popup consultation
+// Reactive state
+const user = computed(() => authstore.user || { _tag: "Loading...", role: "" });
+const mobileMenuOpen = ref(false);
 const popupConsultationId = ref(null);
 const popupConsultationData = ref(null);
 const loadingPopupConsultation = ref(false);
 
-const user = ref({ _tag: "Loading...", role: "" });
-const sidebarOpen = ref(false);
+// Computed properties
+const isVerified = computed(() => authstore.isVerified);
+const roleSpecificActions = useRoleSpecificActions(user);
+const hasUnreadMessages = computed(() => messageStore.hasUnreadMessages);
 
-// Watch for changes to the active consultation in the store
-// This ensures we don't use the store's active consultation directly
-watch(() => consultationStore.activeConsultationId, () => {
-  // Only clear our popup state if the chat is not currently shown
-  // This prevents the popup from being affected by navigation in the consultations page
-  if (!messageStore.showChat) {
-    popupConsultationId.value = null;
-    popupConsultationData.value = null;
-  }
-}, { immediate: true });
+// Navigation handler
+const handleNavigation = (path) => router.push(path);
 
+// Chat functionality
 const toggleChat = async () => {
   if (!messageStore.showChat) {
-    // Opening the chat
     messageStore.showChat = true;
-    
-    // Show loading state
     loadingPopupConsultation.value = true;
     
-    // Reset popup state to avoid showing wrong consultation
+    // Clear previous data
     popupConsultationId.value = null;
     popupConsultationData.value = null;
     
-    // Reset messages for popup by setting an empty object
-    // This is a workaround since there's no clearAllMessages method
-    messageStore.messagesByConsultation = {};
-    
     try {
-      // Load the user's active consultation independently
       await loadUserActiveConsultation();
+      
+      // Mark messages as read when opening chat
+      if (popupConsultationId.value) {
+        messageStore.markAsRead(popupConsultationId.value);
+      }
     } finally {
-      // Hide loading state after a short delay to prevent flashing
       setTimeout(() => {
         loadingPopupConsultation.value = false;
-      }, 300);
+      }, 100);
     }
   } else {
-    // Closing the chat
     messageStore.showChat = false;
   }
 };
 
-// Function to find the user's active consultation
+const handleMessageReceived = (event) => {
+  const { consultationId, message } = event.detail;
+  
+  // Show browser notification if supported and chat is closed
+  if ('Notification' in window && Notification.permission === 'granted' && !messageStore.showChat) {
+    new Notification('New message received', {
+      body: `${message.sender}: ${message.message.substring(0, 50)}${message.message.length > 50 ? '...' : ''}`,
+      icon: '/favicon.ico',
+      tag: `consultation-${consultationId}`,
+      requireInteraction: false,
+      silent: false
+    });
+  }
+};
+
+// Load user's active consultation
 const loadUserActiveConsultation = async () => {
   try {
-    // Get the consultation history
     const history = await consultationStore.fetchConsultationHistory();
 
-    if (history && history.length > 0) {
-      // Find any active consultation for the current user
+    if (history?.length > 0) {
       const activeConsultation = history.find(c =>
         c.user_id === authstore.user.id &&
         (c.status === 'in_progress' || c.status === 'requested')
       );
 
       if (activeConsultation) {
-        // Fetch latest consultation data
-        const updatedConsultation = await consultationStore.fetchConsultation(activeConsultation.id);
+        // Set the consultation data immediately to show status
+        popupConsultationId.value = activeConsultation.id;
+        popupConsultationData.value = activeConsultation;
         
-        if (updatedConsultation) {
-          // Set as active consultation for popup only
-          popupConsultationId.value = updatedConsultation.id;
-          popupConsultationData.value = updatedConsultation;
+        // Then try to get updated data
+        try {
+          const updatedConsultation = await consultationStore.fetchConsultation(activeConsultation.id);
           
-          // Fetch messages for this consultation
-          await messageStore.fetchMessages(updatedConsultation.id);
-          
-          // Start listening for new messages
-          messageStore.listenForMessages(updatedConsultation.id);
-        } else {
-          popupConsultationId.value = activeConsultation.id;
-          popupConsultationData.value = activeConsultation;
+          if (updatedConsultation) {
+            popupConsultationData.value = updatedConsultation;
+          }
+        } catch (updateError) {
+          console.warn("Could not fetch updated consultation, using cached data:", updateError);
+          // Keep the original consultation data if update fails
         }
+        
+        // Load messages (this won't cause double loading due to Chatbox fixes)
+        await messageStore.fetchMessages(activeConsultation.id);
+        messageStore.listenForMessages(activeConsultation.id);
       }
     }
   } catch (error) {
@@ -189,27 +174,19 @@ const loadUserActiveConsultation = async () => {
   }
 };
 
-// Define event handler functions
+// Event handlers
 const handleConsultationUpdated = (event) => {
   const updatedConsultation = event.detail.consultation;
-
-  // If this is the user's active consultation in the popup
   if (updatedConsultation && popupConsultationId.value === updatedConsultation.id) {
-    if (updatedConsultation.status === 'completed') {
-      // If the consultation was completed, update the popup data
-      popupConsultationData.value = updatedConsultation;
-    } else {
-      // Otherwise update with latest data
-      popupConsultationData.value = updatedConsultation;
-    }
+    // Update immediately to reflect status changes
+    popupConsultationData.value = updatedConsultation;
   }
 };
 
 const handleConsultationEnded = (event) => {
   const endedConsultationId = event.detail.consultationId;
-
-  // If this is the consultation currently shown in the popup, update its status
   if (popupConsultationId.value === endedConsultationId && popupConsultationData.value) {
+    // Update status immediately
     popupConsultationData.value = {
       ...popupConsultationData.value,
       status: 'completed'
@@ -217,38 +194,55 @@ const handleConsultationEnded = (event) => {
   }
 };
 
+const handleNewConsultationCreated = (event) => {
+  const newConsultation = event.detail.consultation;
+  if (newConsultation && newConsultation.user_id === authstore.user?.id) {
+    // If chat popup is open, update it with the new consultation
+    if (messageStore.showChat) {
+      popupConsultationId.value = newConsultation.id;
+      popupConsultationData.value = newConsultation;
+    }
+    
+    // Also update any global consultation state
+    consultationStore.setActiveConsultation(newConsultation.id);
+  }
+};
+
+// Lifecycle hooks
 onMounted(async () => {
   await authstore.fetchUser();
+  
   if (authstore.user) {
     user.value = authstore.user;
+    
+    // Only initialize consultation listening for health experts
     if (authstore.user.role === "health_expert") {
+      console.log('Initializing consultation notifications for health expert');
       echostore.listenForNewConsultations();
+    } else {
+      console.log('User is not a health expert, skipping consultation notifications');
     }
   }
 
-  // Add event listeners
+  // Add all event listeners
   document.addEventListener('consultation:updated', handleConsultationUpdated);
   document.addEventListener('consultation:ended', handleConsultationEnded);
+  document.addEventListener('consultation:created', handleNewConsultationCreated); // Add this line
+
+    // Add message notification listener
+    document.addEventListener('message:received', handleMessageReceived);
+  
+  // Request notification permission
+  if ('Notification' in window && Notification.permission === 'default') {
+    Notification.requestPermission();
+  }
 });
 
-// Clean up event listeners on component unmount
+// Update onBeforeUnmount to remove all listeners:
 onBeforeUnmount(() => {
   document.removeEventListener('consultation:updated', handleConsultationUpdated);
-  document.removeEventListener('consultation:ended', handleConsultationEnded);
+  document.removeEventListener('consultation:ended', handleConsultationEnded);  
+  document.removeEventListener('consultation:created', handleNewConsultationCreated); // Add this line
+  document.removeEventListener('message:received', handleMessageReceived);
 });
 </script>
-
-<style scoped>
-.dashboard-link {
-  display: block;
-  color: #4a5568; /* text-gray-700 */
-  padding: 0.5rem 0.75rem; /* px-3 py-2 */
-  border-radius: 0.375rem; /* rounded-md */
-  font-weight: 500; /* font-medium */
-  transition: background-color 0.3s ease; /* transition */
-}
-
-.dashboard-link:hover {
-  background-color: #c6f6d5; /* hover:bg-green-100 */
-}
-</style>

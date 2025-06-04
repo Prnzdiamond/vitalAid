@@ -6,6 +6,7 @@ export const useNotificationStore = defineStore("notification", {
     state: () => ({
         unreadNotifications: [],
         popupNotifications: [],
+        shownDesktopNotifications: new Set(), // Track shown desktop notifications to prevent duplicates
     }),
 
     getters: {
@@ -55,6 +56,9 @@ export const useNotificationStore = defineStore("notification", {
 
                 // Also clear any matching popup notifications
                 this.popupNotifications = [];
+
+                // Clear desktop notification tracking
+                this.shownDesktopNotifications.clear();
             } catch (error) {
                 console.error("Error marking all notifications as read:", error);
             }
@@ -71,6 +75,8 @@ export const useNotificationStore = defineStore("notification", {
                 this.unreadNotifications = this.unreadNotifications.filter((n) => n.id !== notificationId);
                 // Also remove from popup notifications if present
                 this.dismissPopupNotification(notificationId);
+                // Remove from desktop notification tracking
+                this.shownDesktopNotifications.delete(notificationId);
             } catch (error) {
                 console.error("Error dismissing notification:", error);
             }
@@ -78,6 +84,8 @@ export const useNotificationStore = defineStore("notification", {
 
         dismissPopupNotification(notificationId) {
             this.popupNotifications = this.popupNotifications.filter((n) => n.id !== notificationId);
+            // Remove from desktop notification tracking
+            this.shownDesktopNotifications.delete(notificationId);
         },
 
         notifyDoctor(notificationData) {
@@ -98,15 +106,20 @@ export const useNotificationStore = defineStore("notification", {
                 }
             }
 
-            // Show browser notification only for this specific notification
-            if (Notification.permission === "default") {
-                Notification.requestPermission().then((permission) => {
-                    if (permission === "granted") {
-                        this.showNotification(notificationData);
-                    }
-                });
-            } else if (Notification.permission === "granted") {
-                this.showNotification(notificationData);
+            // Show browser notification only if we haven't shown it before
+            const notificationId = notificationData.id || notificationData.data?.id;
+            if (!this.shownDesktopNotifications.has(notificationId)) {
+                this.shownDesktopNotifications.add(notificationId);
+
+                if (Notification.permission === "default") {
+                    Notification.requestPermission().then((permission) => {
+                        if (permission === "granted") {
+                            this.showNotification(notificationData);
+                        }
+                    });
+                } else if (Notification.permission === "granted") {
+                    this.showNotification(notificationData);
+                }
             }
         },
 
@@ -236,8 +249,28 @@ export const useNotificationStore = defineStore("notification", {
                 }, 10000);
             }
 
-            // Also add to the unreadNotifications state
-            this.notifyDoctor(notificationData);
+            // Add to the unreadNotifications state and show desktop notification
+            // But only call notifyDoctor for consultation/follow_up/rating types to avoid duplicate desktop notifications
+            if (['consultation', 'follow_up', 'rating'].includes(type)) {
+                this.notifyDoctor(notificationData);
+            } else {
+                // For general notifications, just add to unread without desktop notification
+                // since desktop notification is handled elsewhere for general notifications
+                if (notificationData.id) {
+                    const exists = this.unreadNotifications.some(n => n.id === notificationData.id);
+                    if (!exists) {
+                        const newNotification = {
+                            id: notificationData.id,
+                            data: notificationData.data || notificationData,
+                            hasActions: false,
+                            hasLink: Boolean(notificationData.data?.extra?.route || notificationData.extra?.route),
+                            route: notificationData.data?.extra?.route || notificationData.extra?.route || null,
+                            createdAt: new Date().toISOString(),
+                        };
+                        this.unreadNotifications.push(newNotification);
+                    }
+                }
+            }
         },
 
         handleGeneralNotification(notification) {
@@ -261,6 +294,23 @@ export const useNotificationStore = defineStore("notification", {
 
             // Show the notification popup
             this.showPopupNotification(processedNotification);
+
+            // Show desktop notification for general notifications
+            // Check if we haven't shown this desktop notification before
+            const notificationId = notification.id;
+            if (!this.shownDesktopNotifications.has(notificationId)) {
+                this.shownDesktopNotifications.add(notificationId);
+
+                if (Notification.permission === "granted") {
+                    this.showNotification(processedNotification);
+                } else if (Notification.permission === "default") {
+                    Notification.requestPermission().then((permission) => {
+                        if (permission === "granted") {
+                            this.showNotification(processedNotification);
+                        }
+                    });
+                }
+            }
         }
     },
 });

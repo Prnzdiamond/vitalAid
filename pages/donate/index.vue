@@ -2,12 +2,13 @@
   <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
     <!-- Header section -->
     <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-8">
-      <div>
-        <h1 class="text-3xl font-bold text-green-700 mb-2">Donation Requests</h1>
-        <p class="text-gray-600">Help make a difference in someone's life today</p>
-      </div>
-      
-      <NuxtLink
+  <div>
+    <h1 class="text-3xl font-bold text-green-700 mb-2">Donation Requests</h1>
+    <p class="text-gray-600">Help make a difference in someone's life today</p>
+  </div>
+  
+  <div class="flex flex-wrap gap-3 mt-4 md:mt-0" v-if="user.role === 'charity'">
+        <NuxtLink
         to="/donate/create"
         class="mt-4 md:mt-0 px-6 py-3 bg-green-600 text-white font-medium rounded-lg hover:bg-green-700 transition-colors flex items-center shadow-md"
         v-if="token.get()"
@@ -17,6 +18,28 @@
         </svg>
         Create Donation Request
       </NuxtLink>
+      <NuxtLink
+  to="/donate/my_request"
+  class="mt-4 md:mt-0 md:ml-3 px-6 py-3 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 transition-colors flex items-center shadow-md"
+  v-if="token.get()"
+>
+  <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+  </svg>
+  My Requests
+</NuxtLink>
+
+<NuxtLink
+  to="/withdrawals"
+  class="mt-4 md:mt-0 md:ml-3 px-6 py-3 bg-amber-600 text-white font-medium rounded-lg hover:bg-amber-700 transition-colors flex items-center shadow-md"
+  v-if="token.get()"
+>
+  <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z" />
+  </svg>
+  Withdrawals
+</NuxtLink>
+      </div>
     </div>
 
     <!-- Loading state -->
@@ -109,10 +132,12 @@ import { useToken } from "@/composables/useToken";
 import { useSwal } from "@/composables/useSwal"; // Assuming you have this composable
 
 const donationStore = useDonationStore();
+const authStore = useAuthStore();
 const requests = ref([]);
 const loading = ref(true);
 const token = useToken();
 const { swal } = useSwal(); // Get the swal function
+const user = computed(() => authStore.user);
 
 // Format numbers with commas
 const formatNumber = (num) => {

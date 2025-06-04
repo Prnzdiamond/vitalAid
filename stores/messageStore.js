@@ -9,7 +9,25 @@ export const useMessageStore = defineStore('message', {
         messagesByConsultation: {},
         showChat: false,
         isLoading: false,
+        unreadMessages: new Set(), // Track unread message IDs
+        lastReadTimestamp: {}, // Track last read timestamp per consultation
     }),
+
+    getters: {
+        hasUnreadMessages: (state) => {
+            return state.unreadMessages.size > 0;
+        },
+        
+        getUnreadCount: (state) => (consultationId) => {
+            if (!consultationId) return 0;
+            const messages = state.messagesByConsultation[consultationId] || [];
+            const lastRead = state.lastReadTimestamp[consultationId] || 0;
+            return messages.filter(msg => 
+                new Date(msg.timestamp).getTime() > lastRead && 
+                msg.sender !== 'You' // Don't count own messages
+            ).length;
+        }
+    },
 
     actions: {
         async sendMessage(consultationId, message) {
@@ -76,6 +94,27 @@ export const useMessageStore = defineStore('message', {
             return this.messagesByConsultation[consultationId] || [];
         },
 
+        markAsRead(consultationId) {
+            if (!consultationId) return;
+            
+            // Update last read timestamp
+            this.lastReadTimestamp[consultationId] = Date.now();
+            
+            // Remove unread messages for this consultation
+            const messages = this.messagesByConsultation[consultationId] || [];
+            messages.forEach(msg => {
+                if (msg.id) {
+                    this.unreadMessages.delete(msg.id);
+                }
+            });
+        },
+
+        markMessageAsUnread(messageId) {
+            if (messageId) {
+                this.unreadMessages.add(messageId);
+            }
+        },
+
         listenForMessages(consultationId) {
             if (!window.Echo || this.subscribedChannels.has(consultationId)) return;
 
@@ -89,6 +128,19 @@ export const useMessageStore = defineStore('message', {
                     }
                     console.log("New message received:", event.message);
                     this.messagesByConsultation[consultationId].push(event.message);
+                    
+                    // Mark as unread if chat is closed
+                    if (!this.showChat && event.message.id) {
+                        this.markMessageAsUnread(event.message.id);
+                        
+                        // Dispatch custom event for notification
+                        document.dispatchEvent(new CustomEvent('message:received', {
+                            detail: {
+                                consultationId,
+                                message: event.message
+                            }
+                        }));
+                    }
                 });
         }
     }

@@ -95,6 +95,28 @@
               </div>
             </div>
           </div>
+
+          <!-- Available Balance for Owner -->
+          <div v-if="isOwner && availableBalance > 0" class="mb-6 p-4 bg-green-50 border border-green-200 rounded-lg">
+            <div class="flex justify-between items-center">
+              <div>
+                <p class="text-sm text-green-700 font-medium">Available for Withdrawal</p>
+                <p class="text-2xl font-bold text-green-800">₦{{ formatNumber(availableBalance) }}</p>
+                <p class="text-xs text-green-600 mt-1">
+                  Previously withdrawn: ₦{{ formatNumber(donation.withdrawn_amount || 0) }}
+                </p>
+              </div>
+              <button
+                @click="openWithdrawalModal"
+                class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg flex items-center transition-colors"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                Withdraw Funds
+              </button>
+            </div>
+          </div>
           
           <!-- Action buttons -->
           <div class="flex flex-wrap gap-3">
@@ -196,6 +218,15 @@
       @donation-successful="handleDonationSuccessful"
     />
 
+    <!-- Withdrawal Modal -->
+    <WithdrawalModal
+      v-if="showWithdrawalModal"
+      @close="showWithdrawalModal = false"
+      :campaign="donation"
+      :available-balance="availableBalance"
+      @withdrawal-successful="handleWithdrawalSuccessful"
+    />
+
     <!-- Image Slideshow Modal -->
     <ImageSlideshow
       v-if="showSlideshow"
@@ -213,6 +244,7 @@ import { useDonationStore } from "@/stores/donationStore";
 import { useAuthStore } from "@/stores/authStore";
 import { useSwal } from '@/composables/useSwal';
 import DonationModal from "@/components/DonationModal.vue";
+import WithdrawalModal from "@/components/WithdrawalModal.vue";
 import ImageSlideshow from "@/components/ImageSlideshow.vue";
 
 const route = useRoute();
@@ -223,6 +255,7 @@ const donation = ref(null);
 const error = ref(null);
 const loading = ref(true);
 const showModal = ref(false);
+const showWithdrawalModal = ref(false);
 const user = computed(() => authStore.user);
 const { swal, toast } = useSwal();
 const verificationData = ref(null);
@@ -250,17 +283,25 @@ const allImages = computed(() => {
   return images;
 });
 
-// Function to open slideshow at a specific index
-const openSlideshow = (index) => {
-  currentSlideIndex.value = index;
-  showSlideshow.value = true;
-};
-
 // Check if current user is the owner of this donation request
 const isOwner = computed(() => {
   if (!donation.value || !authStore.user) return false;
   return donation.value.org_id === authStore.user.id;
 });
+
+// Calculate available balance for withdrawal
+const availableBalance = computed(() => {
+  if (!donation.value) return 0;
+  const received = donation.value.amount_received || 0;
+  const withdrawn = donation.value.withdrawn_amount || 0;
+  return Math.max(0, received - withdrawn);
+});
+
+// Function to open slideshow at a specific index
+const openSlideshow = (index) => {
+  currentSlideIndex.value = index;
+  showSlideshow.value = true;
+};
 
 // Format numbers with commas
 const formatNumber = (num) => {
@@ -360,6 +401,15 @@ const openDonateModal = () => {
   showModal.value = true;
 };
 
+// Function to open withdrawal modal
+const openWithdrawalModal = () => {
+  if (availableBalance.value <= 0) {
+    toast.fire('No funds available for withdrawal', { type: 'warning' });
+    return;
+  }
+  showWithdrawalModal.value = true;
+};
+
 // Handler for successful donation
 const handleDonationSuccessful = (newDonation) => {
   if (donation.value) {
@@ -378,6 +428,17 @@ const handleDonationSuccessful = (newDonation) => {
     } else {
       donation.value.donations = [newDonation];
     }
+  }
+};
+
+// Handler for successful withdrawal
+const handleWithdrawalSuccessful = (withdrawalAmount) => {
+  if (donation.value) {
+    // Update the withdrawn amount
+    donation.value.withdrawn_amount = (donation.value.withdrawn_amount || 0) + withdrawalAmount;
+    
+    // Show success message
+    toast.fire('Withdrawal request submitted successfully!', { type: 'success' });
   }
 };
 

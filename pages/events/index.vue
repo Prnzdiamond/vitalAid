@@ -63,8 +63,26 @@
               v-if="token.get()"
             >
               My Events
-            </button>
+            </button>  
+            <NuxtLink
+      to="/my-events/joined"
+      class="px-3 py-2 bg-blue-50 text-blue-700 hover:bg-blue-100 rounded-md transition-colors flex items-center text-sm font-medium"
+      v-if="token.get()"
+      >
+      <i class="fas fa-bookmark mr-1"></i>
+      Joined Events
+      </NuxtLink>
+      
+      <NuxtLink
+      to="/my-events/created"
+      class="px-3 py-2 bg-purple-50 text-purple-700 hover:bg-purple-100 rounded-md transition-colors flex items-center text-sm font-medium"
+      v-if="token.get()"
+      >
+      <i class="fas fa-plus-circle mr-1"></i>
+      Created Events
+      </NuxtLink>
           </div>
+          
         </div>
       </div>
       <!-- Community filter indicator -->

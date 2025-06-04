@@ -8,7 +8,7 @@
     >
       <svg 
         xmlns="http://www.w3.org/2000/svg" 
-        class="w-6 h-6 text-gray-700 dark:text-white" 
+        class="w-6 h-6 text-green-700 dark:text-green-700 transition-transform" 
         fill="none" 
         viewBox="0 0 24 24" 
         stroke="currentColor"
@@ -266,6 +266,7 @@ import { storeToRefs } from 'pinia';
 import { ref, onMounted, onBeforeUnmount, watch, computed, nextTick } from 'vue';
 import { useEchoStore } from '@/stores/echoStore';
 import { useRouter } from 'vue-router';
+import { useAuthStore } from '@/stores/authStore';
 
 // Store initialization
 const consultationStore = useConsultationStore();
@@ -292,7 +293,20 @@ onMounted(() => {
   fetchNotifications(true);
   
   // Set up Echo listeners for real-time notifications
-  echoStore.listenForNotifications();
+  // Only health experts should listen for consultation notifications
+  const authStore = useAuthStore();
+  if (authStore.user && authStore.user.role === 'health_expert') {
+    echoStore.listenForNotifications();
+  } else {
+    // For non-health experts, only listen for general user notifications
+    if (authStore.user) {
+      window.Echo.private(`App.Models.User.${authStore.user.id}`)
+        .notification((notification) => {
+          console.log('General notification received:', notification);
+          notificationStore.handleGeneralNotification(notification);
+        });
+    }
+  }
   
   // Add click outside listener
   document.addEventListener('click', handleClickOutside);

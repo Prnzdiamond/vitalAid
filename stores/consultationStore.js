@@ -22,7 +22,7 @@ export const useConsultationStore = defineStore("consultation", {
     },
 
     actions: {
-        // Core API fetch helper
+        // API helper
         async apiCall(endpoint, method = "GET", body = null) {
             const config = useRuntimeConfig();
             try {
@@ -43,7 +43,25 @@ export const useConsultationStore = defineStore("consultation", {
             useNotificationStore().show({ title, message, type });
         },
 
-        // Request a new consultation
+        // Setup messages and listeners
+        setupConsultationListeners(consultationId, consultation) {
+            this.listenForConsultationUpdates(consultationId);
+            const messageStore = useMessageStore();
+
+            if (consultation?.messages?.length > 0) {
+                messageStore.setMessagesByConsultation(consultationId, consultation.messages);
+            } else {
+                messageStore.fetchMessages(consultationId);
+            }
+            messageStore.listenForMessages(consultationId);
+        },
+
+        // Dispatch consultation events
+        dispatchEvent(eventName, detail) {
+            document.dispatchEvent(new CustomEvent(eventName, { detail }));
+        },
+
+        // Request consultation
         async requestConsultation() {
             this.isLoading = true;
             try {
@@ -56,7 +74,7 @@ export const useConsultationStore = defineStore("consultation", {
             }
         },
 
-        // Accept a consultation (for health experts)
+        // Accept consultation (experts)
         async acceptConsultation(consultationId) {
             this.isLoading = true;
             try {
@@ -65,13 +83,10 @@ export const useConsultationStore = defineStore("consultation", {
 
                 if (consultation) {
                     this.activeConsultationId = consultation.id;
-
-                    // Load messages and setup listeners
                     const messageStore = useMessageStore();
                     messageStore.setMessagesByConsultation(consultation.id, consultation.messages || []);
                     messageStore.listenForMessages(consultation.id);
                     this.listenForConsultationUpdates(consultation.id);
-
                     navigateTo('/consultations');
                     return consultation;
                 }
@@ -80,7 +95,7 @@ export const useConsultationStore = defineStore("consultation", {
             }
         },
 
-        // Fetch expert consultations on demand
+        // Fetch expert consultations
         async fetchExpertConsultations() {
             this.isLoading = true;
             try {
@@ -91,20 +106,16 @@ export const useConsultationStore = defineStore("consultation", {
             }
         },
 
-        // Fetch a single consultation by ID
+        // Fetch single consultation
         async fetchConsultation(consultationId) {
             if (!consultationId) return null;
-
             this.isLoading = true;
             try {
                 const { data } = await this.apiCall(`/consultations/${consultationId}`);
                 const consultation = data.consultation;
-
-                // Update active consultation if IDs match
                 if (this.activeConsultationId === consultationId) {
                     this.activeConsultationData = consultation;
                 }
-
                 return consultation;
             } finally {
                 this.isLoading = false;
@@ -112,61 +123,36 @@ export const useConsultationStore = defineStore("consultation", {
         },
 
         // Set active consultation
-        // Set active consultation
         async setActiveConsultation(consultationId) {
             this.activeConsultationId = consultationId;
-
             if (!consultationId) return;
 
-            // Fetch consultation if needed
             let consultation = this.activeConsultationData?.id === consultationId
                 ? this.activeConsultationData
                 : await this.fetchConsultation(consultationId);
 
             this.activeConsultationData = consultation;
-
-            // Setup listeners and message handling
-            this.listenForConsultationUpdates(consultationId);
-            const messageStore = useMessageStore();
-
-            if (consultation?.messages?.length > 0) {
-                messageStore.setMessagesByConsultation(consultationId, consultation.messages);
-            } else {
-                messageStore.fetchMessages(consultationId);
-            }
-
-            messageStore.listenForMessages(consultationId);
-
-            // Dispatch event to notify components of active consultation change
-            document.dispatchEvent(new CustomEvent('consultation:active-changed', {
-                detail: { consultation }
-            }));
+            this.setupConsultationListeners(consultationId, consultation);
+            this.dispatchEvent('consultation:active-changed', { consultation });
         },
 
-        // End a consultation
-        // End a consultation
+        // End consultation
         async endConsultation(consultationId) {
             this.isLoading = true;
             try {
                 await this.apiCall(`/consultations/${consultationId}/end`, "POST");
-
                 if (this.activeConsultationId === consultationId) {
                     this.activeConsultationId = null;
                     this.activeConsultationData = null;
                 }
-
-                // Dispatch an event indicating this consultation has ended
-                document.dispatchEvent(new CustomEvent('consultation:ended', {
-                    detail: { consultationId }
-                }));
-
+                this.dispatchEvent('consultation:ended', { consultationId });
                 return true;
             } finally {
                 this.isLoading = false;
             }
         },
 
-        // Expert takes over a consultation
+        // Take over chat
         async takeOverChat(consultationId) {
             this.isLoading = true;
             try {
@@ -188,20 +174,14 @@ export const useConsultationStore = defineStore("consultation", {
             }
         },
 
-        // Submit rating for a consultation
+        // Rate consultation
         async rateConsultation(consultationId, rating, comment = '') {
             this.isLoading = true;
             try {
-                const { data } = await this.apiCall(
-                    `/consultations/${consultationId}/rate`,
-                    "POST",
-                    { rating, comment }
-                );
-
+                const { data } = await this.apiCall(`/consultations/${consultationId}/rate`, "POST", { rating, comment });
                 if (this.activeConsultationId === consultationId) {
                     this.activeConsultationData = data.consultation;
                 }
-
                 this.showNotification('Rating Submitted', 'Thank you for your feedback!');
                 return data.consultation;
             } catch (error) {
@@ -212,20 +192,14 @@ export const useConsultationStore = defineStore("consultation", {
             }
         },
 
-        // Request follow-up for a consultation
+        // Request follow-up
         async requestFollowUp(consultationId, reason = '') {
             this.isLoading = true;
             try {
-                const { data } = await this.apiCall(
-                    `/consultations/${consultationId}/follow-up`,
-                    "POST",
-                    { reason }
-                );
-
+                const { data } = await this.apiCall(`/consultations/${consultationId}/follow-up`, "POST", { reason });
                 if (this.activeConsultationId === consultationId) {
                     this.activeConsultationData = data.consultation;
                 }
-
                 this.showNotification('Follow-up Requested', 'Your follow-up request has been submitted.');
                 return data.consultation;
             } catch (error) {
@@ -236,17 +210,15 @@ export const useConsultationStore = defineStore("consultation", {
             }
         },
 
-        // Accept a follow-up request
+        // Accept follow-up
         async acceptFollowUp(consultationId) {
             this.isLoading = true;
             try {
                 const { data } = await this.apiCall(`/consultations/${consultationId}/accept-follow-up`, "POST");
                 const consultation = data.consultation;
-
                 if (this.activeConsultationId === consultationId) {
                     this.activeConsultationData = consultation;
                 }
-
                 this.updateConsultationInLists(consultation);
                 this.showNotification('Follow-up Accepted', 'You have accepted the follow-up request.');
                 return consultation;
@@ -260,21 +232,16 @@ export const useConsultationStore = defineStore("consultation", {
 
         // Update consultation in lists
         updateConsultationInLists(updatedConsultation) {
-            document.dispatchEvent(new CustomEvent('consultation:updated', {
-                detail: { consultation: updatedConsultation }
-            }));
+            this.dispatchEvent('consultation:updated', { consultation: updatedConsultation });
         },
 
-        // Listen for real-time consultation updates
+        // Listen for real-time updates
         listenForConsultationUpdates(consultationId) {
             if (!consultationId || !window.Echo) return;
-
             console.log(`Listening for updates on consultations.${consultationId}`);
-
             window.Echo.private(`consultations.${consultationId}`)
                 .listen('.consultation.updated', (event) => {
                     console.log("Consultation updated:", event.consultation);
-
                     this.updateConsultationInLists(event.consultation);
                 });
         }

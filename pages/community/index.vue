@@ -1,12 +1,24 @@
 <template>
   <div class="communities-container">
     <!-- Page Header -->
-    <div class="mb-8">
-      <h1 class="text-3xl font-bold text-gray-800">Communities</h1>
-      <p class="text-gray-600 mt-2">
-        Discover communities to join and connect with like-minded people
-      </p>
-    </div>
+    <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-8">
+  <div>
+    <h1 class="text-3xl font-bold text-gray-800">Communities</h1>
+    <p class="text-gray-600 mt-2">Discover communities to join and connect with like-minded people</p>
+  </div>
+  
+  <!-- Add the My Communities button here -->
+  <NuxtLink
+  to="/community/my-communities"
+  class="mt-4 md:mt-0 md:ml-3 px-6 py-3 bg-purple-600 text-white font-medium rounded-lg hover:bg-purple-700 transition-colors flex items-center shadow-md"
+  v-if="authStore.isAuthenticated"
+>
+  <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+  </svg>
+  My Communities
+</NuxtLink>
+</div>
 
     <!-- Search and Filter Section -->
     <div class="bg-white p-6 rounded-lg shadow-md mb-6">
