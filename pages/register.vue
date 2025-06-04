@@ -296,11 +296,13 @@ import { useRouter } from 'vue-router'
 import { useRuntimeConfig } from '#app'
 import { definePageMeta, useFetch } from '#imports'
 
+
 definePageMeta({
-  layout: "blank"
+  layout: "blank",
 })
 
 const router = useRouter()
+const authStore = useAuthStore() // Assuming you have an auth store for handling authentication
 const runtimeConfig = useRuntimeConfig()
 
 const form = ref({
@@ -408,4 +410,11 @@ const registerUser = async () => {
     isSubmitting.value = false
   }
 }
+
+onBeforeMount(() => {
+  // Ensure the user is not authenticated when accessing the registration page
+  if (authStore.isAuthenticated) {
+    router.push('/dashboard') // Redirect to dashboard if already logged in
+  }
+})
 </script>

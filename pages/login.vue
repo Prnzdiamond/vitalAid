@@ -37,13 +37,16 @@
 </template>
 <script setup>
 definePageMeta({
-  layout: "blank"
+  layout: "blank",
 })
 
 import { ref } from "vue";
 import { useRouter } from "vue-router";
 import { useAuthStore } from "@/stores/authStore";
 import { useSwal } from "@/composables/useSwal"; // Import useSwal
+const authStore = useAuthStore();
+
+ 
 
 const form = ref({ email_tag: "", password: "" });
 const errors = ref({});
@@ -101,4 +104,11 @@ errorMessage += `${messages}\n`;
     });
   }
 }
+
+onBeforeMount(() => {
+  // If user is already authenticated, redirect to dashboard/home
+  if (authStore.isAuthenticated) {
+    return navigateTo('/dashboard'); // or wherever you want authenticated users to go
+  }
+});
 </script>
