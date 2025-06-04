@@ -54,12 +54,55 @@
 </template>
 
 <script setup>
+
+
 import { onMounted, ref, computed, onBeforeUnmount } from "vue";
 import { useRouter } from 'vue-router';
 import { useAuthStore } from "~/stores/authStore";
 import { useEchoStore } from "~/stores/echoStore";
 import { useMessageStore } from "~/stores/messageStore";
 import { useConsultationStore } from "~/stores/consultationStore";
+
+// Lifecycle hooks
+onMounted(async () => {
+
+authstore.restoreSession();
+
+
+
+if (!authstore.isAuthenticated) {
+    await router.push('/login');
+    return;
+  }
+
+  
+await authstore.fetchUser();
+
+if (authstore.user) {
+user.value = authstore.user;
+
+// Only initialize consultation listening for health experts
+if (authstore.user.role === "health_expert") {
+  console.log('Initializing consultation notifications for health expert');
+  echostore.listenForNewConsultations();
+} else {
+  console.log('User is not a health expert, skipping consultation notifications');
+}
+}
+
+// Add all event listeners
+document.addEventListener('consultation:updated', handleConsultationUpdated);
+document.addEventListener('consultation:ended', handleConsultationEnded);
+document.addEventListener('consultation:created', handleNewConsultationCreated); // Add this line
+
+// Add message notification listener
+document.addEventListener('message:received', handleMessageReceived);
+
+// Request notification permission
+if ('Notification' in window && Notification.permission === 'default') {
+Notification.requestPermission();
+}
+});
 
 // Import components
 import HeaderComponent from "@/components/HeaderComponent.vue";
@@ -208,35 +251,7 @@ const handleNewConsultationCreated = (event) => {
   }
 };
 
-// Lifecycle hooks
-onMounted(async () => {
-  await authstore.fetchUser();
-  
-  if (authstore.user) {
-    user.value = authstore.user;
-    
-    // Only initialize consultation listening for health experts
-    if (authstore.user.role === "health_expert") {
-      console.log('Initializing consultation notifications for health expert');
-      echostore.listenForNewConsultations();
-    } else {
-      console.log('User is not a health expert, skipping consultation notifications');
-    }
-  }
 
-  // Add all event listeners
-  document.addEventListener('consultation:updated', handleConsultationUpdated);
-  document.addEventListener('consultation:ended', handleConsultationEnded);
-  document.addEventListener('consultation:created', handleNewConsultationCreated); // Add this line
-
-    // Add message notification listener
-    document.addEventListener('message:received', handleMessageReceived);
-  
-  // Request notification permission
-  if ('Notification' in window && Notification.permission === 'default') {
-    Notification.requestPermission();
-  }
-});
 
 // Update onBeforeUnmount to remove all listeners:
 onBeforeUnmount(() => {
