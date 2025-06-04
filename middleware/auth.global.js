@@ -16,6 +16,7 @@ export default defineNuxtRouteMiddleware((to, from) => {
     
     // Check if user is authenticated for protected routes
     if (!authStore.isAuthenticated) {
+        console.log("User not authenticated, redirecting to login")
       return navigateTo('/login')
     }
   })
