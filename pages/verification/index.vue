@@ -516,15 +516,15 @@ const submitAllDocuments = async () => {
 }
 
 // Redirect if user doesn't need verification
-const needsVerification = computed(() => authStore.needsVerification)
+// const needsVerification = computed(() => authStore.needsVerification)
 
 onMounted(async () => {
   // Fetch verification status on mount
   await authStore.fetchVerificationStatus()
 
-  if (!needsVerification.value) {
-    router.push('/profile')
-    return
-  }
+  // if (!needsVerification.value) {
+  //   router.push('/profile')
+  //   return
+  // }
 })
 </script>

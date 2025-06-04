@@ -15,7 +15,9 @@
                 {{ user?.role?.replace('_', ' ') }}
               </span>
               <!-- Verification Badge -->
-              <span v-if="needsVerification" :class="verificationBadgeClass">
+               <!-- v-if="needsVerification"
+v-if="needsVerification"  add this to enable back verification features -->
+              <span  :class="verificationBadgeClass">
                 <component :is="verificationIcon" class="w-3 h-3 mr-1" />
                 {{ verificationStatusText }}
               </span>
@@ -28,7 +30,7 @@
             Edit
           </button>
           <!-- Verification Button -->
-          <button v-if="needsVerification" @click="navigateTo('/verification')" :class="verificationButtonClass">
+          <button  @click="navigateTo('/verification')" :class="verificationButtonClass">
             <component :is="verificationIcon" class="w-4 h-4 mr-2" />
             {{ verificationButtonText }}
           </button>
