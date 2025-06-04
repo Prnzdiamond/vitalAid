@@ -7,7 +7,9 @@
     <p class="text-gray-600">Help make a difference in someone's life today</p>
   </div>
   
-  <div class="flex flex-wrap gap-3 mt-4 md:mt-0" v-if="user.role === 'charity'">
+  <!-- in production enable only charity -->
+  <!-- v-if="user.role === 'charity' -->
+  <div class="flex flex-wrap gap-3 mt-4 md:mt-0">
         <NuxtLink
         to="/donate/create"
         class="mt-4 md:mt-0 px-6 py-3 bg-green-600 text-white font-medium rounded-lg hover:bg-green-700 transition-colors flex items-center shadow-md"

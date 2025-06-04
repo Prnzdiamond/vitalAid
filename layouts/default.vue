@@ -6,6 +6,13 @@
       :navigation-items="navigationItems"
       @toggle-mobile-menu="mobileMenuOpen = true" 
     />
+
+    <!-- text to display boldly and nicely that all veification features has been enabled for testing purposes -->
+    <div class="text-center text-lg font-semibold text-red-600 mt-4">
+      <p class="bg-yellow-100 text-yellow-800 p-2 rounded-lg shadow-md">
+        All verification features are enabled for testing purposes. Please disable them in production.
+      </p>
+    </div>
     
     <!-- Mobile Navigation Overlay -->
     <MobileNavigation 
