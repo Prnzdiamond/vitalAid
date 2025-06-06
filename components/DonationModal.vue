@@ -419,6 +419,10 @@ const handleDonate = async () => {
       localStorage.setItem('donation_auth_token', currentToken);
     }
 
+    console.log("Submitting donation payload:", payload);
+    console.log("Current auth token:", currentToken);
+
+
     const response = await donationStore.donate(payload);
 
     // Store donation ID for verification after redirect
