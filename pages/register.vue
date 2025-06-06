@@ -593,9 +593,5 @@ const registerUser = async () => {
   }
 }
 
-onBeforeMount(() => {
-  if (authStore.isAuthenticated) {
-    router.push('/dashboard')
-  }
-})
+
 </script>
