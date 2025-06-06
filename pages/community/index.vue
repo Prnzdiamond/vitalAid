@@ -130,7 +130,7 @@
             <span class="text-xs bg-green-100 text-green-800 px-2 py-1 rounded">{{ community.type || 'Community' }}</span>
           </div>
           
-          <p class="text-sm text-gray-500 mt-1">@{{ community._tag }}</p>
+          <p class="text-sm text-gray-500 mt-1">{{ community._tag }}</p>
           
           <p class="text-sm text-gray-600 mt-3 line-clamp-2">
             {{ community.description || 'No description available' }}

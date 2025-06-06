@@ -119,15 +119,15 @@
               :placeholder="getInputPlaceholder()" 
               class="w-full p-3 pr-10 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-400 bg-gray-50"
             >
-            <button class="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600">
+            <!-- <button class="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600">
               <i class="far fa-smile"></i>
-            </button>
+            </button> -->
           </div>
           
           <!-- Attachment button - Only for verified users -->
-          <button v-if="authStore.isVerified" class="p-3 rounded-lg bg-gray-100 text-gray-600 hover:bg-gray-200 transition-colors">
+          <!-- <button v-if="authStore.isVerified" class="p-3 rounded-lg bg-gray-100 text-gray-600 hover:bg-gray-200 transition-colors">
             <i class="fas fa-paperclip"></i>
-          </button>
+          </button> -->
           
           <button @click="sendMessage" 
                   class="p-3 rounded-lg bg-blue-500 text-white hover:bg-blue-600 transition-all hover:-translate-y-1 active:translate-y-0 flex items-center justify-center">

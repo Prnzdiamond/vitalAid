@@ -342,7 +342,7 @@
               <!-- Member Info -->
               <div class="flex-grow">
                 <div class="font-medium">{{ `${member.user.first_name || ''} ${member.user.last_name || ''}` }}</div>
-                <div class="text-sm text-gray-500">@{{ member.user._tag }}</div>
+                <div class="text-sm text-gray-500">{{ member.user._tag }}</div>
               </div>
               
               <!-- Member Role -->
