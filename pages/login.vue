@@ -105,4 +105,10 @@ errorMessage += `${messages}\n`;
   }
 }
 
+onBeforeMount(() => {
+  if (authStore.isAuthenticated) {
+    router.push("/dashboard"); // Redirect to homepage if already logged in
+  }
+})
+
 </script>

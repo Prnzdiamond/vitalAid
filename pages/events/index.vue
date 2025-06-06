@@ -275,6 +275,9 @@
 </template>
 
 <script setup>
+definePageMeta({
+  middleware: 'auth-optional'
+})
 import { ref, computed, onMounted, watch } from "vue";
 import { useEventStore } from "@/stores/eventStore";
 import { useToken } from "@/composables/useToken";

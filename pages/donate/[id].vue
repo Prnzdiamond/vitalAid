@@ -238,6 +238,10 @@
 </template>
 
 <script setup>
+definePageMeta({
+  middleware: 'auth-optional'
+})
+
 import { ref, onMounted, computed } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import { useDonationStore } from "@/stores/donationStore";

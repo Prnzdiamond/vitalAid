@@ -6,5 +6,8 @@
 </template>
 
 <script setup>
+definePageMeta({
+  middleware: 'auth'
+})
 import EventForm from "@/components/EventForm.vue";
 </script>

@@ -75,6 +75,9 @@ export const useAuthStore = defineStore("auth", {
     },
 
     actions: {
+        // Updated login method for authStore.js
+        // Replace the existing login method with this one
+
         async login(data) {
             if (!data.email_tag || !data.password) {
                 return {
@@ -105,11 +108,27 @@ export const useAuthStore = defineStore("auth", {
                     localStorage.setItem("user", JSON.stringify(response.data.user));
 
                     // Reinitialize Echo with the new token
-                    initEcho(response.data.token);
+                    try {
+                        initEcho(response.data.token);
+                    } catch (error) {
+                        console.warn("Echo initialization failed:", error);
+                    }
+
+                    // Handle redirect after login
+                    let redirectPath = '/dashboard'; // default redirect
+
+                    if (process.client) {
+                        const storedRedirect = localStorage.getItem('redirectAfterLogin');
+                        if (storedRedirect) {
+                            redirectPath = storedRedirect;
+                            localStorage.removeItem('redirectAfterLogin');
+                        }
+                    }
 
                     return {
                         message: response.message,
                         success: true,
+                        redirectTo: redirectPath,
                     };
                 } else {
                     return {
@@ -150,48 +169,62 @@ export const useAuthStore = defineStore("auth", {
             }
         },
 
+        // Updated logout method for authStore.js
+        // Replace the existing logout method with this one
+
         async logout() {
+            const config = useRuntimeConfig();
+            const { $toast } = useNuxtApp();
+
+            // Store current token before clearing
+            const currentToken = this.token;
+
+            // Always clear state and localStorage first
+            this.clearAuthState();
+
+            // Try to logout from backend, but don't block on failure
+            if (currentToken) {
+                try {
+                    await $fetch("/logout", {
+                        method: "POST",
+                        headers: { Authorization: `Bearer ${currentToken}` },
+                        baseURL: config.public.apiBase,
+                    });
+                } catch (error) {
+                    console.warn("Backend logout failed, but local logout completed:", error);
+                    // Don't show error to user since local logout succeeded
+                }
+            }
+
+            // Always reinitialize Echo without token
             try {
-                const config = useRuntimeConfig();
-                const { $toast } = useNuxtApp();
-                await $fetch("/logout", {
-                    method: "POST",
-                    headers: { Authorization: `Bearer ${this.token}` },
-                    baseURL: config.public.apiBase,
-                });
-
-                // Clear state
-                this.$patch({
-                    token: "",
-                    user: null,
-                    loggedIn: false,
-                    verificationStatus: null,
-                });
-
-                // Clear localStorage
-                localStorage.removeItem("loginState");
-                localStorage.removeItem("token");
-                localStorage.removeItem("user");
-
-                // Reinitialize Echo with an empty token (or nullify it)
-                initEcho(""); // Reinitialize Echo without a token to disconnect
+                initEcho("");
             } catch (error) {
-                this.$patch({
-                    token: "",
-                    user: null,
-                    loggedIn: false,
-                    verificationStatus: null,
-                });
+                console.warn("Echo reinitialization failed:", error);
+            }
 
+            return {
+                success: true,
+                message: "Logged out successfully"
+            };
+        },
+
+        // Add this new method to handle clearing auth state
+        clearAuthState() {
+            // Clear Pinia state
+            this.$patch({
+                token: "",
+                user: null,
+                loggedIn: false,
+                verificationStatus: null,
+            });
+
+            // Clear localStorage
+            if (process.client) {
                 localStorage.removeItem("loginState");
                 localStorage.removeItem("token");
                 localStorage.removeItem("user");
-
-                initEcho(""); // Reinitialize Echo without a token to disconnect
-
-                console.error("Logout failed:", error);
-                const { $toast } = useNuxtApp();
-                $toast.error(error.data?.message || "Logout failed");
+                localStorage.removeItem("redirectAfterLogin"); // Clear any stored redirect
             }
         },
 
@@ -506,34 +539,80 @@ export const useAuthStore = defineStore("auth", {
             }
         },
 
+        // Add this improved restoreSession method to your authStore.js
+        // Replace the existing restoreSession method with this one
+
         restoreSession() {
-            if (process.client) {
-                const token = localStorage.getItem("token") || "";
+            if (!process.client) return false;
+
+            try {
+                const token = localStorage.getItem("token");
                 const userString = localStorage.getItem("user");
+                const loginStateString = localStorage.getItem("loginState");
+
+                // If no token, clear everything and return false
+                if (!token) {
+                    this.clearAuthState();
+                    return false;
+                }
+
                 let user = null;
                 if (userString) {
                     try {
                         user = JSON.parse(userString);
                     } catch (e) {
                         console.error("Error parsing user from localStorage:", e);
-                        // Optionally, you could clear the invalid data from localStorage here
-                        localStorage.removeItem("user");
+                        // Clear invalid data
+                        this.clearAuthState();
+                        return false;
                     }
                 }
-                const loginStateString = localStorage.getItem("loginState");
+
                 const loginState = loginStateString ? JSON.parse(loginStateString) : false;
 
-                this.token = token;
-                this.user = user;
-                this.loggedIn = !!loginState;
+                // Only restore if we have all required data
+                if (token && user && loginState) {
+                    this.token = token;
+                    this.user = user;
+                    this.loggedIn = true;
 
-                // Fetch verification status if user needs verification
-                if (this.loggedIn && this.needsVerification) {
-                    this.fetchVerificationStatus();
+                    // Reinitialize Echo with restored token
+                    try {
+                        initEcho(token);
+                    } catch (error) {
+                        console.warn("Echo initialization failed during session restore:", error);
+                    }
+
+                    // Fetch verification status if user needs verification
+                    if (this.needsVerification) {
+                        this.fetchVerificationStatus().catch(error => {
+                            console.warn("Failed to fetch verification status during restore:", error);
+                        });
+                    }
+
+                    return true;
+                } else {
+                    // Clear incomplete data
+                    this.clearAuthState();
+                    return false;
                 }
+            } catch (error) {
+                console.error("Error restoring session:", error);
+                this.clearAuthState();
+                return false;
             }
         },
 
+        // Also add this helper method to check if session restoration is needed
+        needsSessionRestore() {
+            if (!process.client) return false;
+
+            const hasStoredToken = !!localStorage.getItem("token");
+            const hasStoredUser = !!localStorage.getItem("user");
+            const hasStoredLoginState = !!localStorage.getItem("loginState");
+
+            return hasStoredToken && hasStoredUser && hasStoredLoginState && !this.loggedIn;
+        },
         // Helper method to check if user can perform certain actions
         canPerformAction(action) {
             if (!this.isAuthenticated) return false;

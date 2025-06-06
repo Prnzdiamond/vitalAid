@@ -344,6 +344,7 @@ import Swal from 'sweetalert2'
 
 definePageMeta({
   layout: "blank",
+  // middleware: "guest", // Ensure this page is only accessible to guests
 })
 
 const router = useRouter()
@@ -593,5 +594,9 @@ const registerUser = async () => {
   }
 }
 
-
+onBeforeMount(() => {
+  if (authStore.isAuthenticated) {
+    router.push("/dashboard"); // Redirect to homepage if already logged in
+  }
+})
 </script>

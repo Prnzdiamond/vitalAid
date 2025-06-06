@@ -1,21 +1,22 @@
 <template>
-  
   <NuxtLayout>
     <NuxtPage />
-    
   </NuxtLayout>
-<div>
-  
-</div>
-
-
 </template>
-<script setup lang="js">
 
+<script setup lang="js">
+const authStore = useAuthStore();
+
+// Restore session immediately when app loads
+if (process.client) {
+  authStore.restoreSession();
+}
 
 onMounted(() => {
-    useAuthStore().restoreSession();
+  // Ensure session is restored on mount as well
+  authStore.restoreSession();
 });
+
 useHead({
   link: [
     {
@@ -24,13 +25,4 @@ useHead({
     }
   ]
 });
-
-const hideheader = () => {
-  return this.route.path == "/login" || this.route.path == "/register"
-}
-
-
-
-
 </script>
-

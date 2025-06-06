@@ -226,6 +226,10 @@
 </template>
 
 <script setup>
+
+definePageMeta({
+  middleware: 'auth-optional'
+})
 import { ref, onMounted, computed } from 'vue';
 import { useCommunityStore } from '@/stores/communityStore';
 import { useAuthStore } from '@/stores/authStore';

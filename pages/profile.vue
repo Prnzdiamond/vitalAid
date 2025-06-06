@@ -267,6 +267,9 @@ v-if="needsVerification"  add this to enable back verification features -->
 </template>
 
 <script setup>
+definePageMeta({
+  middleware: 'auth'
+})
 import { ref, computed, onMounted } from 'vue'
 import { 
   User, Edit, MessageCircle, Heart, Calendar, Users, Clock, Plus, DollarSign, 

@@ -1,42 +1,63 @@
 <template>
-  <div class="text-center">Logging out...</div>
+  <div class="min-h-screen flex items-center justify-center bg-gray-50">
+    <div class="text-center">
+      <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+      <p class="text-gray-600">Logging out...</p>
+    </div>
+  </div>
 </template>
 
 <script setup>
-import { useRouter, useRuntimeConfig, onMounted } from "#imports";
-import { useAuthStore } from "@/stores/authStore"; // Ensure this import is correct
-import { useSwal } from "@/composables/useSwal"; // Import useSwal
+import { useRouter, onMounted } from "#imports";
+import { useAuthStore } from "@/stores/authStore";
+import { useSwal } from "@/composables/useSwal";
+
+// Set page meta to prevent middleware from running
+definePageMeta({
+  middleware: [] // No middleware for logout page
+});
 
 const router = useRouter();
 const store = useAuthStore();
 const { swal } = useSwal();
 
-const logout = async () => {
+const performLogout = async () => {
   try {
-    await store.logout(); // Call logout from AuthStore
-    swal.fire({
+    // Call logout from AuthStore (this will always succeed now)
+    const result = await store.logout();
+    
+    // Show success message
+    await swal.fire({
       icon: 'success',
       title: 'Logged Out',
       text: 'You have been successfully logged out.',
       timer: 1500,
       showConfirmButton: false,
-    }).then(() => {
-      router.push("/login"); // Redirect after logout
     });
+    
+    // Always redirect to login after logout
+    await router.push("/login");
+    
   } catch (error) {
     console.error("Logout error:", error);
-    swal.fire({
-      icon: 'error',
-      title: 'Logout Failed',
-      text: 'An error occurred during logout.',
-    }).then(() => {
-      router.push("/dashboard"); // Redirect to dashboard on failure
+    
+    // Even if there's an error, clear state and redirect
+    store.clearAuthState();
+    
+    await swal.fire({
+      icon: 'warning',
+      title: 'Logged Out',
+      text: 'You have been logged out (with some connection issues).',
+      timer: 2000,
+      showConfirmButton: false,
     });
+    
+    await router.push("/login");
   }
 };
 
 // Call logout function when component mounts
 onMounted(() => {
-  logout();
+  performLogout();
 });
 </script>

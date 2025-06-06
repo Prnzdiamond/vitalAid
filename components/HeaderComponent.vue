@@ -145,13 +145,13 @@
                   <span>Settings</span>
                 </NuxtLink>
                 
-                <button 
-                  @click="handleLogout"
+                <NuxtLink 
+                  to="/logout"
                   class="flex items-center space-x-2 w-full px-4 py-2 text-sm text-red-600 hover:bg-red-50 transition-colors"
                 >
                   <LogOut class="w-4 h-4" />
                   <span>Sign Out</span>
-                </button>
+                </NuxtLink>
               </div>
             </Transition>
           </div>
@@ -205,14 +205,7 @@ const toggleMoreNav = () => {
   }
 }
 
-const handleLogout = async () => {
-  try {
-    await authStore.logout()
-    router.push('/login')
-  } catch (error) {
-    console.error('Logout failed:', error)
-  }
-}
+
 
 // Close menus when clicking outside
 const handleClickOutside = (event) => {

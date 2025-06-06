@@ -115,6 +115,9 @@
 
 
 <script setup>
+definePageMeta({
+  middleware: 'auth'
+})
 import { onMounted, ref, computed } from "vue";
 import { useEventStore } from "@/stores/eventStore";
 import { useToken } from "@/composables/useToken";

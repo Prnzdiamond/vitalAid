@@ -279,6 +279,9 @@
 </template>
 
 <script setup>
+definePageMeta({
+  middleware: 'auth'
+})
 import { ref, computed, onMounted } from 'vue'
 import { User, Settings, ArrowLeft, Loader2 } from 'lucide-vue-next'
 import { useAuthStore } from '~/stores/authStore'

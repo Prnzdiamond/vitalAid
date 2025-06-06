@@ -265,6 +265,9 @@
 </template>
 
 <script setup>
+definePageMeta({
+  middleware: 'auth'
+})
 import { ref, computed, onMounted, reactive } from 'vue'
 import { 
   Shield, ShieldCheck, ShieldX, ArrowLeft, CheckCircle, XCircle, 

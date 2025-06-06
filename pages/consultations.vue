@@ -245,6 +245,10 @@
 </template>
 
 <script setup>
+
+definePageMeta({
+  middleware: 'auth'
+})
 import { ref, computed, onMounted, watch, onBeforeUnmount, nextTick } from "vue";
 import { useConsultationStore } from "@/stores/consultationStore";
 import { useAuthStore } from "~/stores/authStore";

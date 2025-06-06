@@ -368,6 +368,9 @@
 </template>
 
 <script setup>
+definePageMeta({
+  middleware: 'auth-optional'
+})
 import { ref, onMounted, computed } from 'vue';
 import { useRoute } from 'vue-router';
 import { useNuxtApp } from '#app';

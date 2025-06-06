@@ -128,6 +128,11 @@
 </template>
 
 <script setup>
+
+definePageMeta({
+  middleware: 'auth-optional'
+})
+
 import { ref, onMounted } from "vue";
 import { useDonationStore } from "@/stores/donationStore";
 import { useToken } from "@/composables/useToken";

@@ -269,6 +269,10 @@
   </template>
   
   <script setup>
+  definePageMeta({
+  middleware: 'auth'
+})
+
   import { ref, onMounted, computed } from 'vue';
   import { useDonationStore } from '@/stores/donationStore';
   import { useAuthStore } from '@/stores/authStore';
