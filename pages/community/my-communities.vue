@@ -40,7 +40,7 @@
       <h3 class="text-xl font-medium text-gray-800 mb-2">You haven't joined any communities yet</h3>
       <p class="text-gray-600 mb-6">Explore communities to connect with like-minded people</p>
       <NuxtLink 
-        to="/communities" 
+        to="/community" 
         class="inline-block px-6 py-2.5 bg-green-600 text-white font-medium text-sm rounded shadow-md hover:bg-green-700 transition"
       >
         Explore Communities
