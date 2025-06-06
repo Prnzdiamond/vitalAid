@@ -195,7 +195,7 @@
                 <!-- Member Info -->
                 <div class="flex-grow">
                   <div class="text-sm font-medium">{{ getMemberName(member) }}</div>
-                  <div class="text-xs text-gray-500">@{{ member.tag || member.user?._tag }}</div>
+                  <div class="text-xs text-gray-500">{{ member.tag || member.user?._tag }}</div>
                 </div>
                 
                 <!-- Joined Date -->
