@@ -83,6 +83,23 @@
                     <Settings class="w-5 h-5" />
                     <span class="font-medium">Settings</span>
                   </NuxtLink>
+                  <NuxtLink 
+            to="/dashboard" 
+            @click="$emit('update:open', false)"
+            class="flex items-center space-x-2 px-3 py-2 rounded-lg text-gray-700 hover:text-green-600 hover:bg-green-50 transition-all duration-200 group"
+          >
+            <Home class="w-4 h-4 group-hover:scale-110 transition-transform" />
+            <span class="font-medium">Dashboard</span>
+          </NuxtLink>
+          
+          <NuxtLink 
+            to="/profile"
+            @click="$emit('update:open', false)"
+            class="flex items-center space-x-2 px-3 py-2 rounded-lg text-gray-700 hover:text-blue-600 hover:bg-blue-50 transition-all duration-200 group"
+          >
+            <User class="w-4 h-4 group-hover:scale-110 transition-transform" />
+            <span class="font-medium text-sm">Profile</span>
+          </NuxtLink>
                   
                   <button 
                     @click="handleLogout"
