@@ -395,6 +395,10 @@
 </template>
 
 <script setup>
+definePageMeta({
+  middleware: 'auth'
+})
+
 import { ref, onMounted, computed } from "vue";
 import { MessageCircle, ArrowRight, BadgeCheck, Calendar, Clock, Heart, TrendingUp, Users, XCircle } from "lucide-vue-next";
 import { useAuthStore } from "~/stores/authStore";
